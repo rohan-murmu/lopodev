@@ -45,6 +45,7 @@ for pair in \
   "tools:tools" \
   "templates:templates" \
   "AGENTS.md:AGENTS.md" \
+  "README.md:README.md" \
   ".gitignore:.gitignore" \
   ".opencode:.opencode"; do
   source="${pair%%:*}"

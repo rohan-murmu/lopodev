@@ -39,7 +39,7 @@ tools/install_lopodev.sh /path/to/workspace
 lopodev install /path/to/workspace
 ```
 
-This links `tools/`, `templates/`, `AGENTS.md`, `.gitignore`, and `.opencode/`,
+This links `tools/`, `templates/`, `AGENTS.md`, `README.md`, `.gitignore`, and `.opencode/`,
 creates `projects/`, and writes a project `opencode.json` with
 `default_agent: lopodev`. Existing files are never overwritten. Restart
 OpenCode in that workspace after installation.

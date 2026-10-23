@@ -341,6 +341,8 @@ def main() -> int:
                          created, skipped, warnings)
         scaffold_symlink(workspace, "AGENTS.md", TOOLKIT_ROOT / "AGENTS.md",
                          created, skipped, warnings)
+        scaffold_symlink(workspace, "README.md", TOOLKIT_ROOT / "README.md",
+                         created, skipped, warnings)
         scaffold_symlink(workspace, ".gitignore", TOOLKIT_ROOT / ".gitignore",
                          created, skipped, warnings)
         scaffold_symlink(workspace, ".opencode", TOOLKIT_ROOT / ".opencode",
