@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "slug": "prop_poc",
+  "title": "Prop Pipeline PoC",
+  "summary": "Prove the Blender -> GLB -> Godot vertical slice with one procedurally generated low-poly crate, a runnable scene, a rendered screenshot, and a Linux build.",
+  "status": "in_progress",
+  "genre": "technical proof of concept",
+  "target_platform": "linux-x86_64",
+  "engine": {
+    "name": "godot",
+    "version": "4.6.1",
+    "renderer": "gl_compatibility"
+  },
+  "blender": {
+    "version": "5.2.2"
+  },
+  "godot_dir": "projects/prop_poc/godot",
+  "main_scene": "res://scenes/Main.tscn",
+  "assets": [
+    {
+      "id": "sm_crate",
+      "kind": "prop",
+      "source": "procedural",
+      "license": "generated-in-repo",
+      "budget_triangles": 2000,
+      "animated": false,
+      "brief": "Wooden shipping crate, 1.04m wide, 1.0m tall, origin at ground contact, two flat materials."
+    },
+    {
+      "id": "sm_gem",
+      "kind": "pickup",
+      "source": "procedural",
+      "license": "generated-in-repo",
+      "budget_triangles": 500,
+      "animated": true,
+      "brief": "Low-poly blue gem on a single-bone rig with a 2-second looping spin, used to verify animation export/import."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Generate the crate asset",
+      "skills": ["blender-modeling"],
+      "depends_on": [],
+      "verify": "tools/blender/run.sh make_prop.py --kind crate --out-dir projects/prop_poc --name sm_crate",
+      "status": "pending"
+    },
+    {
+      "id": "T2",
+      "title": "Validate the crate GLB independently",
+      "skills": ["blender-modeling", "game-qa"],
+      "depends_on": ["T1"],
+      "verify": "python3 tools/blender/validate_asset.py projects/prop_poc/godot/assets/models/sm_crate.glb --require-material --require-ground-origin --min-triangles 50 --max-triangles 2000",
+      "status": "pending"
+    },
+    {
+      "id": "T3",
+      "title": "Generate and validate the animated gem",
+      "skills": ["blender-animation"],
+      "depends_on": ["T1"],
+      "verify": "python3 tools/blender/validate_asset.py projects/prop_poc/godot/assets/models/sm_gem.glb --require-animation --expect-animation anim_spin --require-skin --require-material",
+      "status": "pending"
+    },
+    {
+      "id": "T4",
+      "title": "Integrate the crate into the Godot main scene",
+      "skills": ["game-world"],
+      "depends_on": ["T2"],
+      "verify": "TARGET_NODE=Prop_Crate TARGET_GLB=res://assets/models/sm_crate.glb tools/godot/validate.sh projects/prop_poc/godot",
+      "status": "pending"
+    },
+    {
+      "id": "T5",
+      "title": "Run the scene for real frames and assert rotation",
+      "skills": ["godot-gameplay", "game-qa"],
+      "depends_on": ["T4"],
+      "verify": "TARGET_NODE=Prop_Crate EXPECT_ROTATION=1 FRAMES=40 tools/godot/smoke.sh projects/prop_poc/godot",
+      "status": "pending"
+    },
+    {
+      "id": "T6",
+      "title": "Launch graphically and inspect a real screenshot",
+      "skills": ["game-qa"],
+      "depends_on": ["T5"],
+      "verify": "tools/godot/screenshot.sh projects/prop_poc/godot projects/prop_poc/artifacts/screenshots/main_scene.png",
+      "status": "pending"
+    },
+    {
+      "id": "T7",
+      "title": "Export and run the Linux release",
+      "skills": ["game-qa"],
+      "depends_on": ["T5"],
+      "verify": "tools/godot/export_build.sh projects/prop_poc/godot Linux projects/prop_poc/build/prop_poc.x86_64",
+      "status": "pending"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "A1",
+      "criterion": "Crate GLB passes independent structural, material, bound, and triangle-budget validation.",
+      "gate": "asset",
+      "evidence": "projects/prop_poc/artifacts/sm_crate.validate.json"
+    },
+    {
+      "id": "A2",
+      "criterion": "Main scene instantiates and contains an imported crate mesh with surfaces and materials.",
+      "gate": "content",
+      "evidence": "projects/prop_poc/artifacts/qa_report.json"
+    },
+    {
+      "id": "A3",
+      "criterion": "Scene processes at least 40 frames headlessly and the crate rotation changes.",
+      "gate": "runtime",
+      "evidence": "projects/prop_poc/artifacts/qa_report.json"
+    },
+    {
+      "id": "A4",
+      "criterion": "Graphical launch produces a non-blank inspected screenshot showing the crate scene.",
+      "gate": "visual",
+      "evidence": "projects/prop_poc/artifacts/screenshots/main_scene.png"
+    },
+    {
+      "id": "A5",
+      "criterion": "Animated gem GLB imports into Godot with the anim_spin AnimationPlayer clip.",
+      "gate": "content",
+      "evidence": "projects/prop_poc/artifacts/sm_gem.animation.json"
+    },
+    {
+      "id": "A6",
+      "criterion": "Linux release binary exists and runs headless for a bounded frame count with exit code 0.",
+      "gate": "build",
+      "evidence": "projects/prop_poc/artifacts/qa_report.json"
+    }
+  ],
+  "known_limitations": [
+    "This is a single-scene asset integration PoC, not a playable game.",
+    "The crate has no collision shape; gameplay collision is out of scope for this milestone.",
+    "The animated gem is only tested by content import, not placed in the main scene."
+  ]
+}

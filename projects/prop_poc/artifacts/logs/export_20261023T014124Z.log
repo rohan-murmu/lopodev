@@ -1,0 +1,29 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+[   0% ] [90m[1mfirst_scan_filesystem[22m | Started Project initialization (5 steps)[39m[0m
+[   0% ] [90m[1mfirst_scan_filesystem[22m | Scanning file structure...[39m[0m
+[  16% ] [90m[1mfirst_scan_filesystem[22m | Loading global class names...[39m[0m
+[  33% ] [90m[1mfirst_scan_filesystem[22m | Verifying GDExtensions...[39m[0m
+[  50% ] [90m[1mfirst_scan_filesystem[22m | Creating autoload scripts...[39m[0m
+[  66% ] [90m[1mfirst_scan_filesystem[22m | Initializing plugins...[39m[0m
+[  83% ] [90m[1mfirst_scan_filesystem[22m | Starting file scan...[39m[0m
+[92m[ DONE ][39m [1mfirst_scan_filesystem[22m
+[0m
+[   0% ] [90m[1msavepack[22m | Started Packing (102 steps)[39m[0m
+[   1% ] [90m[1msavepack[22m | Storing File: res://.godot/imported/sm_crate.glb-e21f536db8b1fd27701187bfd75139b9.scn[39m[0m
+[   1% ] [90m[1msavepack[22m | Storing File: res://assets/models/sm_crate.glb.import[39m[0m
+[  15% ] [90m[1msavepack[22m | Storing File: res://assets/models/sm_crate.meta.json[39m[0m
+[  29% ] [90m[1msavepack[22m | Storing File: res://.godot/imported/sm_gem.glb-7ccf115beee22d485bb1dd941cd5d350.scn[39m[0m
+[  29% ] [90m[1msavepack[22m | Storing File: res://assets/models/sm_gem.glb.import[39m[0m
+[  42% ] [90m[1msavepack[22m | Storing File: res://assets/models/sm_gem.meta.json[39m[0m
+[  57% ] [90m[1msavepack[22m | Storing File: res://.godot/exported/133200997/export-bb30a2bca1f51591e5b2d6a87ed903c6-AnimCheck.scn[39m[0m
+[  70% ] [90m[1msavepack[22m | Storing File: res://.godot/exported/133200997/export-4a24720ee5e787dbe30abc634fa3679d-Main.scn[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://scripts/poc_runtime.gdc[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://scenes/AnimCheck.tscn.remap[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://scenes/Main.tscn.remap[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://scripts/poc_runtime.gd.remap[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://.godot/global_script_class_cache.cfg[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://.godot/uid_cache.bin[39m[0m
+[  84% ] [90m[1msavepack[22m | Storing File: res://project.binary[39m[0m
+[92m[ DONE ][39m [1msavepack[22m
+[0m

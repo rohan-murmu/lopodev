@@ -1,0 +1,2 @@
+IMPORT_GATE=PASS log=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/import_build_20261023T011918Z.log
+EXPORT_GATE=PASS binary=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/build/prop_poc.x86_64 bytes=71070480 log=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/export_20261023T011918Z.log run_log=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/exported_run_20261023T011918Z.log

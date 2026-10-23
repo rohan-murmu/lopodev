@@ -1,0 +1,9 @@
+{
+  "project": "projects/prop_poc/project.json",
+  "slug": "prop_poc",
+  "status": "PASS",
+  "errors": [],
+  "task_count": 7,
+  "asset_count": 2,
+  "acceptance_count": 6
+}

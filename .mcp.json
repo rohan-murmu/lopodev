@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "codemap": {
+      "args": [
+        "--project-root",
+        "/media/rohan/D5/MyProjects/automated-game-dev-agent",
+        "mcp",
+        "--configured-version",
+        "4.6.0",
+        "--integration",
+        "claude-setup"
+      ],
+      "command": "/home/linuxbrew/.linuxbrew/bin/codemap"
+    }
+  }
+}

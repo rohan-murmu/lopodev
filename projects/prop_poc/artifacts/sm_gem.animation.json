@@ -1,0 +1,60 @@
+{
+  "asset": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot/assets/models/sm_gem.glb",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "container": {
+    "bytes": 7224,
+    "chunks": [
+      {
+        "type": 1313821514,
+        "length": 2856
+      },
+      {
+        "type": 5130562,
+        "length": 4340
+      }
+    ]
+  },
+  "gltf_version": "2.0",
+  "generator": "Khronos glTF Blender I/O v5.2.40",
+  "nodes": 3,
+  "meshes": 1,
+  "primitives": 1,
+  "triangles": 20,
+  "materials": [
+    "mat_gem_body"
+  ],
+  "bounds_gltf": {
+    "min": [
+      -0.371013,
+      0.0,
+      -0.394951
+    ],
+    "max": [
+      0.320769,
+      0.954855,
+      0.411829
+    ]
+  },
+  "skins": 1,
+  "animations": [
+    {
+      "name": "anim_spin",
+      "channels": 3,
+      "samplers": 3,
+      "duration_seconds": 2.0
+    }
+  ],
+  "checks": {
+    "require_animation": true,
+    "expected_animations": [
+      "anim_spin"
+    ],
+    "require_material": true,
+    "require_skin": true,
+    "min_triangles": 1,
+    "max_triangles": 6000,
+    "ground_origin": true
+  }
+}

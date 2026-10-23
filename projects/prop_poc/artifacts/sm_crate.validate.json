@@ -1,0 +1,52 @@
+{
+  "asset": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot/assets/models/sm_crate.glb",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "container": {
+    "bytes": 14880,
+    "chunks": [
+      {
+        "type": 1313821514,
+        "length": 2252
+      },
+      {
+        "type": 5130562,
+        "length": 12600
+      }
+    ]
+  },
+  "gltf_version": "2.0",
+  "generator": "Khronos glTF Blender I/O v5.2.40",
+  "nodes": 1,
+  "meshes": 1,
+  "primitives": 2,
+  "triangles": 180,
+  "materials": [
+    "mat_crate_0",
+    "mat_crate_1"
+  ],
+  "bounds_gltf": {
+    "min": [
+      -0.52,
+      0.0,
+      -0.54
+    ],
+    "max": [
+      0.52,
+      1.0,
+      0.54
+    ]
+  },
+  "skins": 0,
+  "animations": [],
+  "checks": {
+    "require_animation": false,
+    "expected_animations": [],
+    "require_material": true,
+    "require_skin": false,
+    "min_triangles": 50,
+    "max_triangles": 2000,
+    "ground_origin": true
+  }
+}

@@ -1,0 +1,14 @@
+STAGED_CHECKS=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot/.pipeline
+IMPORT_GATE=PASS log=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/import_smoke_20261023T014112Z.log
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+{
+  "failures": [],
+  "frames_processed": 40,
+  "generated_at_utc": "2026-10-23T01:41:18",
+  "scene": "res://scenes/Main.tscn",
+  "status": "PASS",
+  "target": "Prop_Crate"
+}
+RUNTIME_SMOKE=PASS
+RUNTIME_LOG=/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/runtime_20261023T014112Z.log

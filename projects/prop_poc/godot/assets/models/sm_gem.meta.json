@@ -1,0 +1,64 @@
+{
+  "animated": true,
+  "animation": {
+    "clips": [
+      {
+        "duration_seconds": 2.0,
+        "loop": true,
+        "name": "anim_spin"
+      }
+    ],
+    "fps": 24,
+    "frame_end": 48,
+    "frame_start": 0
+  },
+  "asset_id": "sm_gem",
+  "blend": {
+    "bytes": 90434,
+    "path": "blender/sm_gem.blend"
+  },
+  "blender_version": "5.2.2 LTS",
+  "generated_at_utc": "2026-10-23T00:15:01+00:00",
+  "generator": "tools/blender/make_animated_prop.py",
+  "glb": {
+    "bytes": 7224,
+    "path": "godot/assets/models/sm_gem.glb",
+    "sha256": "832e866489c00199d73297d050e252c44bc3241136ffa02257ec931b1c4d1c2a"
+  },
+  "kind": "gem",
+  "license": "generated-in-repo",
+  "mesh": {
+    "bounds_blender": {
+      "max": [
+        0.320769,
+        0.394951,
+        0.954855
+      ],
+      "min": [
+        -0.371013,
+        -0.411829,
+        0.0
+      ],
+      "size": [
+        0.691782,
+        0.80678,
+        0.954855
+      ]
+    },
+    "materials": [
+      "mat_gem_body"
+    ],
+    "polygons": 20,
+    "triangles": 20,
+    "vertices": 12
+  },
+  "notes": "Validate with tools/blender/validate_asset.py before Godot import.",
+  "rig": {
+    "bones": [
+      "root"
+    ],
+    "id": "rig_gem"
+  },
+  "source": "procedural",
+  "triangle_budget": 500
+}

@@ -1,0 +1,52 @@
+{
+  "animated": false,
+  "asset_id": "sm_crate",
+  "blend": {
+    "bytes": 91977,
+    "path": "blender/sm_crate.blend"
+  },
+  "blender_version": "5.2.2 LTS",
+  "generated_at_utc": "2026-10-23T00:14:55+00:00",
+  "generator": "tools/blender/make_prop.py",
+  "glb": {
+    "bytes": 14880,
+    "path": "godot/assets/models/sm_crate.glb",
+    "sha256": "95ac994287bc070fb55f88cdbd6cd663308dcd7e4b688f302278ddbfa0c34a35"
+  },
+  "kind": "crate",
+  "license": "generated-in-repo",
+  "material_count": 2,
+  "mesh": {
+    "bounds_blender": {
+      "max": [
+        0.52,
+        0.54,
+        1.0
+      ],
+      "min": [
+        -0.52,
+        -0.54,
+        0.0
+      ],
+      "size": [
+        1.04,
+        1.08,
+        1.0
+      ]
+    },
+    "materials": [
+      "mat_crate_0",
+      "mat_crate_1"
+    ],
+    "polygons": 90,
+    "triangles": 180,
+    "vertices": 120
+  },
+  "notes": "Validate with tools/blender/validate_asset.py before Godot import.",
+  "palette": [
+    "#704723",
+    "#331c0c"
+  ],
+  "source": "procedural",
+  "triangle_budget": 2000
+}

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "slug": "example_game",
+  "title": "Example Game",
+  "summary": "One sentence describing the player fantasy and the first vertical slice.",
+  "status": "in_progress",
+  "genre": "third-person action",
+  "target_platform": "linux-x86_64",
+  "engine": {
+    "name": "godot",
+    "version": "4.6.1",
+    "renderer": "gl_compatibility"
+  },
+  "blender": {
+    "version": "5.2.2"
+  },
+  "godot_dir": "projects/example_game/godot",
+  "main_scene": "res://scenes/Main.tscn",
+  "assets": [
+    {
+      "id": "sm_example_prop",
+      "kind": "prop",
+      "source": "procedural",
+      "license": "generated-in-repo",
+      "budget_triangles": 2000,
+      "animated": false,
+      "brief": "Describe dimensions, silhouette, palette, and use."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Generate and validate the first prop",
+      "skills": ["blender-modeling"],
+      "depends_on": [],
+      "verify": "python3 tools/blender/validate_asset.py projects/example_game/godot/assets/models/sm_example_prop.glb --require-material",
+      "status": "pending"
+    },
+    {
+      "id": "T2",
+      "title": "Integrate the prop into a runnable Godot scene",
+      "skills": ["game-world"],
+      "depends_on": ["T1"],
+      "verify": "TARGET_NODE=Prop tools/godot/validate.sh projects/example_game/godot",
+      "status": "pending"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "A1",
+      "criterion": "The prop GLB passes independent structural validation.",
+      "gate": "asset",
+      "evidence": "projects/example_game/artifacts/sm_example_prop.validate.json"
+    },
+    {
+      "id": "A2",
+      "criterion": "The main scene runs, renders, and contains the imported prop.",
+      "gate": "visual",
+      "evidence": "projects/example_game/artifacts/screenshots/main.png"
+    }
+  ],
+  "known_limitations": []
+}

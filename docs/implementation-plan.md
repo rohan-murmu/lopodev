@@ -33,7 +33,8 @@ playable project + build + known limitations
 
 Skills live in `.opencode/skills/<name>/SKILL.md`. Shared contracts live in
 `AGENTS.md`. Executable helpers live in `tools/` and never depend on a model
-call.
+call. Global agent registration and resume behavior are documented in
+`docs/agent-orchestration.md`.
 
 ## Naming and layout contract
 
