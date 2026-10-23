@@ -47,17 +47,14 @@ OpenCode in that workspace after installation.
 ## Quick start
 
 ```bash
-# New game
+# New game scaffold
 lopodev new --slug sky_runner --title "Sky Runner"
-source tools/env.sh
-python3 tools/validate_spec.py projects/sky_runner/project.json
-python3 tools/pipeline_state.py sync-spec --project projects/sky_runner \
-  --spec projects/sky_runner/project.json
-python3 tools/pipeline_state.py validate --project projects/sky_runner
+lopodev open
 ```
 
-Then run `lopodev open` in the workspace, or open OpenCode and run
-`/init-game`. Ask `lopodev` to continue. The first output is a measurable Gate A plan, not art.
+The scaffold is intentionally a draft. Run `/init-game` or ask `lopodev` to plan
+Gate A; it fills `project.json`, validates it, syncs tasks, and stops for your
+approval. The first output is a measurable plan, not art.
 
 Adopt an existing Godot game without copying or editing it:
 
