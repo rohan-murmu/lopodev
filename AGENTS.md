@@ -1,8 +1,12 @@
-# AGENTS.md - Zero-Cost 3D Game Pipeline
+# AGENTS.md - OpenGame
 
-This repository builds playable low-poly 3D games with Blender, Godot, and an
-OpenCode agent. The agent acts as lead engineer: plan first, execute in small
-verified steps, and report only evidence that actually exists.
+OpenGame builds playable low-poly 3D games with Blender, Godot, and an
+OpenCode agent team. The lead plans first, delegates one bounded task at a
+time, verifies independently, and reports only evidence that actually exists.
+
+The default primary agent is `opengame`. Project-local specialists are
+`game-design`, `modeling`, `animation`, `level-design`, `gameplay`, `ui`,
+`optimization`, and `qa-release`. Slash commands live in `.opencode/commands/`.
 
 ## Non-negotiable rules
 
@@ -24,15 +28,42 @@ verified steps, and report only evidence that actually exists.
    recorded in `projects/<slug>/ASSET_LICENSES.md` with source and attribution.
 7. **Keep scripts modular.** One asset/scene/system per script or GDScript file.
    Do not generate a whole game in one giant script.
+8. **Never approve a human gate on the user's behalf.** A passing command, a
+   generated plan, file existence, or silence is not approval.
+9. **Do not build a parallel agent runtime.** OpenGame uses native OpenCode
+   agents, the `task` tool, commands, skills, and files. The Python tools are
+   deterministic helpers, not an orchestration framework.
+10. **Mobile is separate evidence.** Android export success is not device,
+    performance, or iOS proof. Record such checks as `NOT RUN` when they did not
+    happen.
+
+## Install into a workspace
+
+```bash
+tools/install_opengame.sh /path/to/workspace
+```
+
+This links `tools/`, `templates/`, `AGENTS.md`, `.gitignore`, and `.opencode/`
+without overwriting existing files, creates `projects/`, and writes
+`opencode.json` with `default_agent: opengame`. A new project can also be
+bootstrapped directly:
+
+```bash
+python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
+```
 
 ## Toolchain
 
 | Purpose | Command |
 |---|---|
+| Install OpenGame into a workspace | `tools/install_opengame.sh <workspace>` |
 | Create a project workspace | `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"` |
+| Adopt an existing Godot project | `python3 tools/adopt_project.py --godot-dir <dir> --project projects/<slug> --slug <slug> --title "<title>"` |
 | Show/resume project state | `python3 tools/pipeline_state.py show --project projects/<slug>` |
+| Next task / all tasks | `python3 tools/pipeline_state.py next-task --project projects/<slug>` |
 | Load pinned paths | `source tools/env.sh` |
 | Environment check | `tools/check_env.sh` |
+| Append/read event evidence | `python3 tools/opengame_log.py append --project projects/<slug> --event <name>` |
 | Blender script | `tools/blender/run.sh <script.py> [args...]` |
 | GLB validation | `python3 tools/blender/validate_asset.py <file.glb> [options]` |
 | Asset/animation preview | `python3 tools/blender/render_preview.py --blend <file.blend> --out-dir <dir>` |
@@ -41,13 +72,44 @@ verified steps, and report only evidence that actually exists.
 | Runtime smoke test | `tools/godot/smoke.sh <godot_dir>` |
 | Graphical screenshot | `tools/godot/screenshot.sh <godot_dir> <out.png>` |
 | Linux export | `tools/godot/export_build.sh <godot_dir> [preset] [out]` |
+| Android capability check | `tools/godot/check_android.sh` |
+| Android debug/release APK | `tools/godot/export_android.sh <godot_dir> [--release]` |
+| QA report record/validate | `python3 tools/qa_report.py record ...` / `validate --project projects/<slug>` |
+| Toolkit verification | `tools/verify_opengame.sh [--crystal <project>] [--full]` |
 | Full PoC | `tools/run_poc.sh` |
 
 Godot is pinned at `.tools/godot/Godot_v4.6.1-stable_linux.x86_64` with export
 templates `4.6.1.stable`. Blender is the installed 5.2.2 LTS. See
 `docs/environment-audit.md` for the actual audit.
 
-## Skill cooperation
+### Android facts for this host
+
+- SDK: `/home/rohan/Android/Sdk`; JDK 17; debug keystore under
+  `~/.local/share/godot/keystores/`.
+- Android export requires `[rendering]
+  textures/vram_compression/import_etc2_astc=true` in `project.godot`.
+  Without it texture validation fails even when all other settings are correct.
+- The export script uses an isolated `XDG_CONFIG_HOME`; do not depend on a
+  developer's global editor settings.
+- No Android device was connected during the environment audit. Device and
+  performance gates are therefore `NOT RUN` until a real run occurs.
+
+## Agent team and skill cooperation
+
+The `opengame` lead routes work; specialists execute bounded tasks and return
+evidence. Skills hold reusable procedures; they are not agents.
+
+| Agent | Primary scope | Default skills |
+|---|---|---|
+| `opengame` | Plan, route, verify, gate decisions | `opengame-workflow` |
+| `game-design` | Spec, tasks, acceptance, scope | `game-planner` |
+| `modeling` | Props/environment meshes, GLB, previews | `blender-modeling` |
+| `animation` | Rig, actions, animated GLB | `blender-animation` |
+| `level-design` | Scenes, lighting, collision, spawns | `game-world` |
+| `gameplay` | Player/camera/mechanics/tests | `godot-gameplay` |
+| `ui` | HUD, menus, touch, safe areas | `mobile-low-poly` |
+| `optimization` | Measured performance fixes | `mobile-low-poly` |
+| `qa-release` | Independent gates and report | `game-qa` |
 
 Run skills in this order, skipping only with a recorded reason:
 
@@ -62,7 +124,9 @@ Run skills in this order, skipping only with a recorded reason:
    GLB instances, lighting/camera, collision, spawn points.
 5. **godot-gameplay** - spec mechanics + scene node map -> small GDScript
    systems, input actions, signals, animation wiring, gameplay tests.
-6. **game-qa** - project + acceptance criteria -> import/content/runtime/
+6. **ui / mobile-low-poly** - HUD, menus, safe areas, touch actions, Android
+   export prerequisites and honest mobile limitations.
+7. **game-qa** - project + acceptance criteria -> import/content/runtime/
    graphical/export evidence, test report, known limitations.
 
 Handoffs are file-based. A skill must not rely on conversation-only state.
@@ -89,16 +153,31 @@ or no animations). Record the reason and still obtain explicit approval.
 
 State lives in `projects/<slug>/pipeline_state.json` and is the source of truth
 for a resumed session. It records the current gate, human approvals and
-rejections, tasks, assets, tests, issues, and the next safe step.
+rejections, tasks, assets, tests, issues, and the next safe step. Structured
+events are appended to `projects/<slug>/artifacts/events.jsonl`.
 
 ```bash
 python3 tools/pipeline_state.py show --project projects/<slug>
+python3 tools/pipeline_state.py next-task --project projects/<slug>
+python3 tools/pipeline_state.py list-tasks --project projects/<slug>
+python3 tools/pipeline_state.py sync-spec --project projects/<slug> --spec projects/<slug>/project.json
+python3 tools/pipeline_state.py task-start --project projects/<slug> --task-id T2
+python3 tools/pipeline_state.py record-task --project projects/<slug> --task-id T2 \
+  --status verified --owner modeling --changed-file <path> \
+  --verification "<command and result>" --evidence <path>
 python3 tools/pipeline_state.py propose --project projects/<slug> --gate A --evidence "<paths>" --note "<what changed>"
 python3 tools/pipeline_state.py approve --project projects/<slug> --gate A --user-statement "<explicit approval>"
 python3 tools/pipeline_state.py reject --project projects/<slug> --gate A --reason "<reason>" --user-statement "<reply>"
 python3 tools/pipeline_state.py record-test --project projects/<slug> --gate A --name "<check>" --status PASS --command "<command>" --evidence "<path>"
 python3 tools/pipeline_state.py validate --project projects/<slug>
+python3 tools/qa_report.py validate --project projects/<slug>
+python3 tools/opengame_log.py validate --project projects/<slug>
 ```
+
+Task statuses are `planned`, `in_progress`, `blocked`, `needs_approval`,
+`verified`, and `failed`. Legacy `pending`/`complete` are accepted for old
+projects. A task cannot be `verified` without evidence or verification text,
+and cannot be verified while a matching gate test is `FAIL`.
 
 Rules:
 
@@ -128,6 +207,10 @@ projects/<game_slug>/
     scripts/snake_case.gd
     .pipeline/                 # generated QA staging, gitignored
   artifacts/
+    logs/
+    screenshots/
+    events.jsonl
+    qa_report.json
   build/                       # gitignored
   docs/
 ```
@@ -139,9 +222,12 @@ projects/<game_slug>/
 - 1 Blender unit = 1 Godot meter. Author props with origin at ground contact.
   Blender +Z up; glTF/Godot +Y up after export.
 - Low-poly budgets: props 50-2,000 triangles; characters 500-6,000; 4,096 px
-  max texture dimension, one material per asset unless documented otherwise.
+  max texture dimension (2,048 px for mobile), one material per asset unless
+  documented otherwise.
 - Generated GLBs live only in `godot/assets/models/`; editable sources stay in
   `blender/`. Never edit a GLB by hand.
+- Adopted projects may keep their Godot directory outside the project context;
+  `project.json.godot_dir` records the reference and no game file is copied.
 
 ## Technical testing gates
 
@@ -161,6 +247,9 @@ verifiable. These technical gates are cumulative:
    and inspect an actual screenshot; verify it is not blank/one-color.
 7. **Build gate** - export a Linux release, verify binary exists, and run the
    exported binary headless for a bounded number of frames with exit code 0.
+8. **Android gate** - when mobile is in scope, check the toolchain, export an
+   APK, verify manifest/signature/size, and run on a device or emulator. If no
+   device exists, record device/interaction/performance as `NOT RUN`.
 
 Record each gate as `PASS`, `FAIL`, or `NOT RUN` with command, timestamp, and
 artifact path. A final report must not turn `NOT RUN` into an implied pass.

@@ -27,10 +27,23 @@ class BootstrapProjectTests(unittest.TestCase):
             project = workspace / "projects" / "test_game"
             for relative in ("project.json", "GAME_SPEC.md", "ASSET_LICENSES.md",
                              "pipeline_state.json", "godot/project.godot",
-                             "godot/export_presets.cfg"):
+                             "godot/export_presets.cfg", "godot/scenes/Main.tscn"):
                 self.assertTrue((project / relative).is_file(), relative)
             self.assertTrue((workspace / "tools").is_symlink())
             self.assertTrue((workspace / "AGENTS.md").is_symlink())
+            self.assertTrue((workspace / ".opencode").is_symlink())
+            self.assertTrue((workspace / "opencode.json").is_file())
+            config = json.loads((workspace / "opencode.json").read_text())
+            self.assertEqual(config["default_agent"], "opengame")
+            godot_text = (project / "godot" / "project.godot").read_text()
+            self.assertIn('run/main_scene="res://scenes/Main.tscn"', godot_text)
+            self.assertIn("import_etc2_astc=true", godot_text)
+            presets = (project / "godot" / "export_presets.cfg").read_text()
+            self.assertIn('platform="Android"', presets)
+            spec = json.loads((project / "project.json").read_text())
+            self.assertEqual(spec["platforms"]["mobile"], "android")
+            events = (project / "artifacts" / "events.jsonl").read_text().splitlines()
+            self.assertEqual(json.loads(events[0])["event"], "project_init")
             data = json.loads((project / "pipeline_state.json").read_text())
             self.assertEqual(data["slug"], "test_game")
             self.assertEqual(data["current_gate"], "A")

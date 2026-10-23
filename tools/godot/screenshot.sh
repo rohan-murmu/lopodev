@@ -43,5 +43,18 @@ if [[ $rc -ne 0 || ! -s "$OUT" ]]; then
 fi
 if command -v identify >/dev/null 2>&1; then
   identify "$OUT" | tee -a "$SHOT_LOG"
+  stats="$(convert "$OUT" -colorspace Gray -format '%[fx:mean] %[fx:standard_deviation]' info: 2>/dev/null || true)"
+  if [[ -n "$stats" ]]; then
+    mean="${stats%% *}"
+    stddev="${stats##* }"
+    echo "SCREENSHOT_STATS mean=$mean stddev=$stddev" | tee -a "$SHOT_LOG"
+    min_stddev="${SCREENSHOT_MIN_STDDEV:-0.02}"
+    if awk -v s="$stddev" -v m="$min_stddev" 'BEGIN { exit !(s >= m) }'; then
+      :
+    else
+      echo "SCREENSHOT_GATE=FAIL blank or near-uniform image: stddev=$stddev < $min_stddev out=$OUT" >&2
+      exit 1
+    fi
+  fi
 fi
 echo "SCREENSHOT_GATE=PASS out=$OUT log=$SHOT_LOG"

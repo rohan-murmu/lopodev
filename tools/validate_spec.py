@@ -10,15 +10,23 @@ import sys
 from pathlib import Path
 
 KNOWN_SKILLS = {
+    # First-draft skills, still the domain procedures used by OpenGame.
     "game-planner",
     "blender-modeling",
     "blender-animation",
     "game-world",
     "godot-gameplay",
     "game-qa",
+    # OpenGame shared procedures.
+    "mobile-low-poly",
+    "opengame-workflow",
 }
 KNOWN_GATES = {"generation", "asset", "import", "content", "runtime", "visual", "build", "manual"}
-TASK_STATUS = {"pending", "in_progress", "complete", "blocked"}
+TASK_STATUS = {
+    "planned", "in_progress", "blocked", "needs_approval", "verified", "failed",
+    # Legacy first-draft values kept for existing projects such as crystal_test.
+    "pending", "complete",
+}
 SLUG_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 ASSET_ID_RE = re.compile(r"^(sm_|mat_|rig_|anim_|sfx_|tex_)[a-z0-9_]+$")
 
@@ -59,7 +67,12 @@ def validate(data: dict, project_dir: Path | None = None) -> list[str]:
           "main_scene must be a res:// path ending in .tscn", errors)
 
     assets = data.get("assets")
-    check(isinstance(assets, list) and len(assets) > 0, "assets must be a non-empty list", errors)
+    adoption = data.get("adoption")
+    if isinstance(adoption, dict):
+        check(isinstance(assets, list), "assets must be a list", errors)
+    else:
+        check(isinstance(assets, list) and len(assets) > 0,
+              "assets must be a non-empty list", errors)
     asset_ids: set[str] = set()
     if isinstance(assets, list):
         for index, asset in enumerate(assets):

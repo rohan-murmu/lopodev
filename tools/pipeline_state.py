@@ -31,7 +31,14 @@ GATES = [
 GATE_IDS = [gate_id for gate_id, _ in GATES]
 GATE_NAMES = dict(GATES)
 VALID_GATE_STATUS = {"pending", "proposed", "approved", "rejected"}
-VALID_TASK_STATUS = {"pending", "in_progress", "complete", "blocked"}
+# Canonical OpenGame task states. ``pending`` and ``complete`` are retained as
+# legacy aliases so projects created by the first draft keep validating.
+TASK_STATUSES = {
+    "planned", "in_progress", "blocked", "needs_approval", "verified", "failed",
+}
+LEGACY_TASK_STATUSES = {"pending", "complete"}
+VALID_TASK_STATUS = TASK_STATUSES | LEGACY_TASK_STATUSES
+TASK_STATUS_ALIASES = {"pending": "planned", "complete": "verified"}
 VALID_ASSET_STATUS = {"pending", "validated", "rejected"}
 VALID_TEST_STATUS = {"PASS", "FAIL", "NOT RUN"}
 VALID_ISSUE_STATUS = {"open", "resolved"}
@@ -331,19 +338,191 @@ def cmd_record_task(args: argparse.Namespace) -> int:
     if args.status not in VALID_TASK_STATUS:
         print(f"ERROR: invalid task status: {args.status}", file=sys.stderr)
         return 2
-    payload = {
-        "id": args.id,
-        "title": args.title or "",
-        "status": args.status,
-        "skills": list(args.skill or []),
-        "depends_on": list(args.depends_on or []),
-        "evidence": list(args.evidence or []),
-        "note": (args.note or "").strip(),
-        "updated_at_utc": utc_now(),
-    }
+    canonical = TASK_STATUS_ALIASES.get(args.status, args.status)
+    if canonical == "verified":
+        evidence = [value for value in (args.evidence or []) if value]
+        if not evidence and not (args.verification or "").strip():
+            print("ERROR: a verified task needs --evidence or --verification; "
+                  "generating a file or running a tool is not verification",
+                  file=sys.stderr)
+            return 2
+        failed = [t for t in data.get("tests", [])
+                  if t.get("status") == "FAIL" and (not args.gate or t.get("gate") == args.gate)]
+        if failed:
+            print(f"ERROR: task {args.id} cannot be verified while gate "
+                  f"{args.gate or '?'} has {len(failed)} FAIL test(s)", file=sys.stderr)
+            return 2
+    existing = next((item for item in data["tasks"] if item.get("id") == args.id), None)
+    payload = dict(existing or {})
+    payload["id"] = args.id
+    if args.title is not None:
+        payload["title"] = args.title
+    payload["status"] = args.status
+    if args.skill:
+        payload["skills"] = list(args.skill)
+    if args.depends_on is not None:
+        payload["depends_on"] = list(args.depends_on)
+    if args.evidence:
+        current = list(payload.get("evidence", []))
+        add_evidence(current, args.evidence)
+        payload["evidence"] = current
+    if args.owner is not None:
+        payload["owner"] = args.owner
+    if args.changed_file:
+        current = list(payload.get("changed_files", []))
+        add_evidence(current, args.changed_file)
+        payload["changed_files"] = current
+    if args.acceptance is not None:
+        payload["acceptance"] = args.acceptance
+    if args.verification is not None:
+        payload["verification"] = args.verification
+    if args.issue:
+        current = list(payload.get("issues", []))
+        add_evidence(current, args.issue)
+        payload["issues"] = current
+    if args.gate is not None:
+        payload["gate"] = args.gate
+    if args.note is not None:
+        payload["note"] = args.note
+    payload["updated_at_utc"] = utc_now()
     _upsert(data["tasks"], "id", args.id, payload)
     save_state(args.project, data)
     print(f"TASK_RECORDED={args.id} status={args.status}")
+    if canonical != args.status:
+        print(f"TASK_STATUS_ALIAS={args.status}->{canonical}")
+    return 0
+
+
+def _task_is_done(task: dict) -> bool:
+    return TASK_STATUS_ALIASES.get(task.get("status"), task.get("status")) == "verified"
+
+
+SKILL_OWNER = {
+    "game-planner": "game-design",
+    "blender-modeling": "modeling",
+    "blender-animation": "animation",
+    "game-world": "level-design",
+    "godot-gameplay": "gameplay",
+    "mobile-low-poly": "ui",
+    "opengame-workflow": "opengame",
+    "game-qa": "qa-release",
+}
+
+
+def cmd_sync_spec(args: argparse.Namespace) -> int:
+    data = load_state(args.project)
+    spec_path = Path(args.spec).expanduser().resolve()
+    try:
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: cannot read spec: {exc}", file=sys.stderr)
+        return 2
+    tasks = spec.get("tasks")
+    assets = spec.get("assets")
+    if not isinstance(tasks, list) or not tasks:
+        print("ERROR: spec has no tasks to sync", file=sys.stderr)
+        return 2
+    existing_tasks = {task.get("id"): task for task in data.get("tasks", [])}
+    existing_assets = {asset.get("id"): asset for asset in data.get("assets", [])}
+    added_tasks = 0
+    added_assets = 0
+    seen_spec_tasks: set[str] = set()
+    for task in tasks:
+        task_id = task.get("id")
+        if not task_id:
+            print("ERROR: every spec task needs an id", file=sys.stderr)
+            return 2
+        if task_id in seen_spec_tasks:
+            print(f"ERROR: duplicate task id in spec: {task_id}", file=sys.stderr)
+            return 2
+        seen_spec_tasks.add(task_id)
+        if task_id in existing_tasks:
+            continue
+        skills = list(task.get("skills") or [])
+        owner = task.get("owner") or (SKILL_OWNER.get(skills[0]) if skills else "")
+        data["tasks"].append({
+            "id": task_id,
+            "title": task.get("title", ""),
+            "status": "planned",
+            "owner": owner,
+            "skills": skills,
+            "depends_on": list(task.get("depends_on") or []),
+            "acceptance": task.get("verify", ""),
+            "verification": "",
+            "evidence": [],
+            "changed_files": [],
+            "issues": [],
+            "gate": task.get("gate"),
+            "note": "",
+            "updated_at_utc": utc_now(),
+        })
+        added_tasks += 1
+    for asset in assets or []:
+        asset_id = asset.get("id")
+        if not asset_id or asset_id in existing_assets:
+            continue
+        data["assets"].append({
+            "id": asset_id,
+            "path": "",
+            "status": "pending",
+            "triangles": 0,
+            "animated": bool(asset.get("animated", False)),
+            "evidence": [],
+            "note": "planned from project.json",
+            "updated_at_utc": utc_now(),
+        })
+        added_assets += 1
+    errors = validate_state(data)
+    if errors:
+        print("ERROR: synced state would be invalid:", file=sys.stderr)
+        for error in errors:
+            print(f"  {error}", file=sys.stderr)
+        return 2
+    if args.dry_run:
+        print(f"SYNC_DRY_RUN tasks={added_tasks} assets={added_assets}")
+        return 0
+    save_state(args.project, data)
+    print(f"SYNCED_SPEC={spec_path} tasks_added={added_tasks} assets_added={added_assets}")
+    return 0
+
+
+def cmd_next_task(args: argparse.Namespace) -> int:
+    data = load_state(args.project)
+    tasks = data.get("tasks", [])
+    by_id = {t.get("id"): t for t in tasks}
+    ready = []
+    blocked = []
+    for task in tasks:
+        if _task_is_done(task):
+            continue
+        status = TASK_STATUS_ALIASES.get(task.get("status"), task.get("status"))
+        missing = [dep for dep in task.get("depends_on", [])
+                   if dep not in by_id or not _task_is_done(by_id[dep])]
+        if missing or status in {"blocked", "failed", "needs_approval"}:
+            reason = ",".join(missing) if missing else f"status:{status}"
+            blocked.append((task.get("id"), [reason]))
+        else:
+            ready.append(task)
+    print(f"READY_TASKS={len(ready)} BLOCKED_TASKS={len(blocked)}")
+    for task in ready:
+        print(f"READY {task.get('id')} status={task.get('status')} "
+              f"owner={task.get('owner', '')} title={task.get('title', '')}")
+    for task_id, missing in blocked:
+        print(f"BLOCKED {task_id} waiting_on={','.join(missing)}")
+    return 0
+
+
+def cmd_list_tasks(args: argparse.Namespace) -> int:
+    data = load_state(args.project)
+    counts: dict[str, int] = {}
+    for task in data.get("tasks", []):
+        status = task.get("status", "?")
+        counts[status] = counts.get(status, 0) + 1
+        print(f"{task.get('id', '?'):12s} {status:14s} "
+              f"owner={task.get('owner', '-'):12s} deps="
+              f"{','.join(task.get('depends_on', [])) or '-'} "
+              f"{task.get('title', '')}")
+    print("TASK_COUNTS=" + ",".join(f"{key}:{value}" for key, value in sorted(counts.items())))
     return 0
 
 
@@ -465,9 +644,49 @@ def validate_state(data: dict) -> list[str]:
             if gates.get(gate_id, {}).get("status") != "approved":
                 errors.append("current_gate is complete but not all gates are approved")
                 break
+    task_id_list = [task.get("id") for task in data.get("tasks", [])
+                    if isinstance(task, dict) and task.get("id")]
+    if len(task_id_list) != len(set(task_id_list)):
+        errors.append("task ids must be unique")
+    task_ids = set(task_id_list)
+    task_graph = {task.get("id"): list(task.get("depends_on", []))
+                  for task in data.get("tasks", [])
+                  if isinstance(task, dict) and task.get("id")
+                  and isinstance(task.get("depends_on", []), list)}
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def has_cycle(task_id: str) -> bool:
+        if task_id in visiting:
+            return True
+        if task_id in visited:
+            return False
+        visiting.add(task_id)
+        for dependency in task_graph.get(task_id, []):
+            if dependency in task_graph and has_cycle(dependency):
+                return True
+        visiting.remove(task_id)
+        visited.add(task_id)
+        return False
+
+    if any(has_cycle(task_id) for task_id in task_graph):
+        errors.append("task dependencies contain a cycle")
     for index, task in enumerate(data.get("tasks", [])):
         if task.get("status") not in VALID_TASK_STATUS:
             errors.append(f"tasks[{index}] invalid status: {task.get('status')!r}")
+        depends_on = task.get("depends_on", [])
+        if not isinstance(depends_on, list):
+            errors.append(f"tasks[{index}].depends_on must be a list")
+            continue
+        for dep in depends_on:
+            if dep not in task_ids:
+                errors.append(f"tasks[{index}] depends on unknown task: {dep!r}")
+        if task.get("gate") is not None and task.get("gate") not in GATE_IDS:
+            errors.append(f"tasks[{index}].gate is invalid: {task.get('gate')!r}")
+        canonical = TASK_STATUS_ALIASES.get(task.get("status"), task.get("status"))
+        if canonical == "verified":
+            if not task.get("evidence") and not task.get("verification"):
+                errors.append(f"tasks[{index}] is verified without evidence or verification")
     for index, asset in enumerate(data.get("assets", [])):
         if asset.get("status") not in VALID_ASSET_STATUS:
             errors.append(f"assets[{index}] invalid status: {asset.get('status')!r}")
@@ -538,13 +757,35 @@ def build_parser() -> argparse.ArgumentParser:
     task = sub.add_parser("record-task", help="record or update a task")
     task.add_argument("--project", required=True)
     task.add_argument("--id", required=True)
-    task.add_argument("--title", default="")
-    task.add_argument("--status", required=True)
+    task.add_argument("--title", default=None)
+    task.add_argument("--status", required=True,
+                      choices=sorted(VALID_TASK_STATUS))
+    task.add_argument("--owner", default=None,
+                      help="agent responsible, e.g. gameplay or qa-release")
     task.add_argument("--skill", action="append", default=[])
-    task.add_argument("--depends-on", action="append", default=[])
+    task.add_argument("--depends-on", action="append", default=None)
+    task.add_argument("--changed-file", action="append", default=[])
+    task.add_argument("--acceptance", default=None)
+    task.add_argument("--verification", default=None)
+    task.add_argument("--issue", action="append", default=[])
+    task.add_argument("--gate", default=None, choices=GATE_IDS)
     task.add_argument("--evidence", action="append", default=[])
-    task.add_argument("--note", default="")
+    task.add_argument("--note", default=None)
     task.set_defaults(func=cmd_record_task)
+
+    sync = sub.add_parser("sync-spec", help="import new tasks/assets from project.json without overwriting state")
+    sync.add_argument("--project", required=True)
+    sync.add_argument("--spec", required=True)
+    sync.add_argument("--dry-run", action="store_true")
+    sync.set_defaults(func=cmd_sync_spec)
+
+    next_task = sub.add_parser("next-task", help="show tasks whose dependencies are verified")
+    next_task.add_argument("--project", required=True)
+    next_task.set_defaults(func=cmd_next_task)
+
+    list_tasks = sub.add_parser("list-tasks", help="list tasks and status counts")
+    list_tasks.add_argument("--project", required=True)
+    list_tasks.set_defaults(func=cmd_list_tasks)
 
     asset = sub.add_parser("record-asset", help="record or update an asset")
     asset.add_argument("--project", required=True)
@@ -577,7 +818,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     recovery = sub.add_parser("set-recovery", help="set the next safe step")
     recovery.add_argument("--project", required=True)
-    recovery.add_argument("--next-step", required=True)
+    recovery.add_argument("--next-step", "--next", dest="next_step", required=True)
     recovery.add_argument("--last-command", default="")
     recovery.add_argument("--note", default="")
     recovery.set_defaults(func=cmd_set_recovery)

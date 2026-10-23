@@ -64,6 +64,21 @@ def project_json(slug: str, title: str, godot_version: str,
         "status": "draft",
         "genre": "unplanned",
         "target_platform": "linux-x86_64",
+        "platforms": {
+            "primary": "linux-x86_64",
+            "mobile": "android",
+            "ios": "unverified-path",
+        },
+        "mobile": {
+            "orientation": "landscape",
+            "touch_input": True,
+            "renderer": "gl_compatibility",
+            "budget": {
+                "draw_calls": 80,
+                "triangles_visible": 60000,
+                "texture_max_px": 2048,
+            },
+        },
         "engine": {
             "name": "godot",
             "version": godot_version,
@@ -86,19 +101,28 @@ config_version=5
 [application]
 
 config/name={json.dumps(title)}
-config/description="Created by automated-game-dev-agent."
+config/description="Created by OpenGame."
 config/features=PackedStringArray("4.6", "GL Compatibility")
+run/main_scene="res://scenes/Main.tscn"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/handheld/orientation=1
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
 
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.04, 0.06, 0.1, 1)
 """
 
 
@@ -133,7 +157,88 @@ texture_format/s3tc_bptc=true
 texture_format/etc2_astc=false
 binary_format/architecture="x86_64"
 ssh_remote_deploy/enabled=false
+
+[preset.1]
+
+name="Android"
+platform="Android"
+runnable=true
+advanced_options=false
+dedicated_server=false
+custom_features=""
+export_filter="all_resources"
+include_filter=""
+exclude_filter=""
+export_path="build/{slug}.apk"
+patches=PackedStringArray()
+encryption_include_filters=""
+encryption_exclude_filters=""
+seed=0
+encrypt_pck=false
+encrypt_directory=false
+script_export_mode=2
+
+[preset.1.options]
+
+custom_template/debug=""
+custom_template/release=""
+gradle_build/use_gradle_build=false
+architectures/armeabi-v7a=false
+architectures/arm64-v8a=true
+architectures/x86=false
+architectures/x86_64=false
+version/code=1
+version/name="1.0"
+package/unique_name="com.opengame.{slug}"
+package/name="{slug}"
+package/signed=true
+texture_format/etc2_astc=true
 """
+
+
+def main_scene_scaffold() -> str:
+    return """[gd_scene format=3]
+
+[node name="Main" type="Node3D"]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 12)
+fov = 60.0
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 12)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="ScaffoldLabel" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 640.0
+offset_bottom = 80.0
+text = "OpenGame scaffold - complete the plan before building"
+"""
+
+
+def opencode_config() -> str:
+    return json.dumps({
+        "$schema": "https://opencode.ai/config.json",
+        "default_agent": "opengame",
+        "mcp": {
+            "blender": {
+                "type": "local",
+                "command": ["uvx", "mcp-for-blender"],
+                "enabled": True,
+                "environment": {
+                    "BLENDER_HOST": "localhost",
+                    "BLENDER_PORT": "9876",
+                    "DISABLE_TELEMETRY": "true",
+                },
+                "timeout": 60000,
+            }
+        },
+    }, indent=2) + "\n"
 
 
 def main() -> int:
@@ -211,11 +316,23 @@ def main() -> int:
                     godot_project(args.title.strip()), created, skipped)
     write_if_absent(project / "godot" / "export_presets.cfg",
                     export_presets(args.slug), created, skipped)
+    write_if_absent(project / "godot" / "scenes" / "Main.tscn",
+                    main_scene_scaffold(), created, skipped)
 
     state_data = state.new_state(args.slug, args.title.strip(), str(workspace),
                                  str(project))
     state.save_state(str(project), state_data)
     created.append(str(state_file))
+    events = project / "artifacts" / "events.jsonl"
+    if not events.exists():
+        events.write_text(json.dumps({
+            "ts_utc": state.utc_now(),
+            "event": "project_init",
+            "status": "created",
+            "command": "tools/bootstrap_project.py",
+            "message": f"Bootstrapped {args.slug}; Gate A not yet proposed.",
+        }, sort_keys=True) + "\n", encoding="utf-8")
+        created.append(str(events))
 
     if not args.no_scaffold:
         scaffold_symlink(workspace, "tools", TOOLKIT_ROOT / "tools",
@@ -226,6 +343,10 @@ def main() -> int:
                          created, skipped, warnings)
         scaffold_symlink(workspace, ".gitignore", TOOLKIT_ROOT / ".gitignore",
                          created, skipped, warnings)
+        scaffold_symlink(workspace, ".opencode", TOOLKIT_ROOT / ".opencode",
+                         created, skipped, warnings)
+        write_if_absent(workspace / "opencode.json", opencode_config(),
+                        created, skipped)
 
     summary = {
         "workspace": str(workspace),
@@ -236,7 +357,8 @@ def main() -> int:
         "warnings": warnings,
         "next_step": (
             "Run game-planner, write GAME_SPEC.md and project.json, validate with "
-            "tools/validate_spec.py, then propose gate A."
+            "tools/validate_spec.py, sync tasks with pipeline_state.py sync-spec, "
+            "then propose gate A."
         ),
     }
     print(json.dumps(summary, indent=2))

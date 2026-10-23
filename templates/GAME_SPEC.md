@@ -2,7 +2,7 @@
 
 Status: draft
 Slug: `<game_slug>`
-Target: Linux x86_64, Godot 4.6.1, Blender 5.2.2
+Target: Linux x86_64; Android validation when mobile is in scope; Godot 4.6.1, Blender 5.2.2
 First milestone: `<one vertical slice>`
 
 ## Player fantasy and core loop
@@ -48,6 +48,10 @@ must be recorded in `ASSET_LICENSES.md` with source and attribution.
 
 - Low-poly budgets and naming from `AGENTS.md`.
 - Renderer: `gl_compatibility` (verified on this host).
+- Mobile budget: <= 60,000 visible triangles, <= 80 draw calls, <= 2,048 px
+  textures, 44x44 logical-pixel touch targets. These are starting limits, not
+  measured device guarantees.
+- Android export requires `textures/vram_compression/import_etc2_astc=true`.
 - No paid services or mandatory paid APIs.
 - One script per system; no monolithic game script.
 
@@ -55,8 +59,8 @@ must be recorded in `ASSET_LICENSES.md` with source and attribution.
 
 | ID | Task | Skill | Verification | Status |
 |---|---|---|---|---|
-| T1 | <task> | blender-modeling | <command> | pending |
-| T2 | <task> | game-world | <command> | pending |
+| T1 | <task> | modeling | <command> | planned |
+| T2 | <task> | level-design | <command> | planned |
 
 ## Acceptance criteria
 
@@ -67,6 +71,7 @@ must be recorded in `ASSET_LICENSES.md` with source and attribution.
 | A3 | <measurable criterion> | runtime | `<path>` |
 | A4 | <visual evidence inspected> | visual | `<path>` |
 | A5 | <Linux build runs> | build | `<path>` |
+| A6 | <Android export and device state recorded honestly> | android | `<path>` |
 
 ## Assumptions and open questions
 

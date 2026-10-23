@@ -31,18 +31,26 @@
     {
       "id": "T1",
       "title": "Generate and validate the first prop",
-      "skills": ["blender-modeling"],
+      "skills": [
+        "blender-modeling"
+      ],
       "depends_on": [],
       "verify": "python3 tools/blender/validate_asset.py projects/example_game/godot/assets/models/sm_example_prop.glb --require-material",
-      "status": "pending"
+      "status": "planned",
+      "owner": "modeling"
     },
     {
       "id": "T2",
       "title": "Integrate the prop into a runnable Godot scene",
-      "skills": ["game-world"],
-      "depends_on": ["T1"],
+      "skills": [
+        "game-world"
+      ],
+      "depends_on": [
+        "T1"
+      ],
       "verify": "TARGET_NODE=Prop tools/godot/validate.sh projects/example_game/godot",
-      "status": "pending"
+      "status": "planned",
+      "owner": "level-design"
     }
   ],
   "acceptance": [
@@ -57,7 +65,28 @@
       "criterion": "The main scene runs, renders, and contains the imported prop.",
       "gate": "visual",
       "evidence": "projects/example_game/artifacts/screenshots/main.png"
+    },
+    {
+      "id": "A5",
+      "criterion": "When mobile is in scope, the Android APK contains a manifest and device/performance checks are either run or recorded NOT RUN.",
+      "gate": "android",
+      "evidence": "projects/example_game/artifacts/qa_report.json"
     }
   ],
-  "known_limitations": []
+  "known_limitations": [],
+  "platforms": {
+    "primary": "linux-x86_64",
+    "mobile": "android",
+    "ios": "unverified-path"
+  },
+  "mobile": {
+    "orientation": "landscape",
+    "touch_input": true,
+    "renderer": "gl_compatibility",
+    "budget": {
+      "draw_calls": 80,
+      "triangles_visible": 60000,
+      "texture_max_px": 2048
+    }
+  }
 }

@@ -21,3 +21,14 @@ projects/*/godot/.pipeline/
 # OS/editor noise
 .DS_Store
 *.swp
+
+# Mobile and signing artifacts
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p12
+
+# OpenCode local/plugin noise
+.opencode/node_modules/
+.opencode/package-lock.json

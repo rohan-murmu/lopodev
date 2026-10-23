@@ -1,135 +1,117 @@
 # Agent Orchestration
 
-## Global registration
+## Native OpenCode structure
 
-The reusable agent is installed globally at:
+OpenGame uses project-local OpenCode agents. There is no custom runtime.
 
 ```text
-~/.config/opencode/agents/automated-game-dev-agent.md
+.opencode/
+  agents/
+    opengame.md          # primary
+    game-design.md
+    modeling.md
+    animation.md
+    level-design.md
+    gameplay.md
+    ui.md
+    optimization.md
+    qa-release.md
+  commands/              # slash workflows
+  skills/                # reusable procedures
 ```
 
-The project skills are registered globally through `~/.config/opencode/opencode.json`:
+`opencode.json` sets `default_agent: opengame`. A workspace created by
+`tools/install_opengame.sh` or `tools/bootstrap_project.py` links `.opencode/`
+to the toolkit, so agents and commands are discovered without copying files.
 
-```json
-{
-  "skills": {
-    "paths": [
-      "/media/rohan/D5/MyProjects/automated-game-dev-agent/.opencode/skills"
-    ]
-  }
-}
+Verify discovery:
+
+```bash
+opencode agent list
+opencode debug agent opengame
+opencode debug config
 ```
 
-This is additive: it does not replace any existing global skill path or MCP
-server. The agent runs as a primary OpenCode agent with the following
-permissions:
+The legacy global `automated-game-dev-agent` may remain on the machine; OpenGame
+does not depend on it and does not overwrite it.
 
-- edits: allowed;
-- bash: allowed, except `rm *`, `git reset *`, `git clean *`, and `git push *`
-  require approval, and `sudo *` is denied;
-- `question`: allowed so approval gates can be presented;
-- external directories: the toolkit root is allowed, everything else asks.
+## Delegation
 
-Restart OpenCode after changing the agent or config so the TUI reloads them.
+The lead calls the native `task` tool with the exact specialist name. Every
+brief contains:
+
+1. Project slug and one-sentence objective.
+2. Upstream files to read.
+3. Allowed and forbidden write paths.
+4. Acceptance commands and thresholds.
+5. Required evidence paths and event/state updates.
+6. Stop conditions: invalid upstream artifact, license gap, ambiguous scope,
+   failed prerequisite gate, or writes outside scope.
+
+Specialists return changed paths, commands/results, evidence, and limitations.
+The lead inspects the evidence and records the task; a specialist's claim is not
+accepted without inspection.
 
 ## Approval gates
 
-| Gate | Name | Artifact handed to the human |
-|---|---|---|
-| A | Requirements and game plan | `GAME_SPEC.md`, `project.json`, tasks, assets, acceptance criteria, risks |
-| B | Character and asset previews | `.blend`, validated `.glb`, `.meta.json`, validator JSON, rendered previews |
-| C | Animation previews | animated `.glb`, channel report, frame strip, Godot import and runtime animation evidence |
-| D | First playable | one core loop, controls, scene, runtime smoke, real screenshot |
-| E | Integrated gameplay and QA | all mechanics, cumulative technical gates, QA report, known limitations |
-| F | Release candidate | final export, acceptance table, known limitations, final report |
+| Gate | Human approves |
+|---|---|
+| A | Spec, tasks, asset list, measurable acceptance, scope, risks |
+| B | Editable sources, validated GLBs, metadata, inspected previews |
+| C | Animated GLB, channel report, rendered frames, Godot import |
+| D | One complete core loop, controls, runtime smoke, real screenshot |
+| E | All mechanics, cumulative QA evidence, known limitations |
+| F | Final export, acceptance table, limitations, final report |
 
-A gate is skipped only when it has no real work, and the skip still needs
-explicit human approval.
+A gate with no real work still requires a recorded reason and explicit approval.
+A passing command, generated plan, or file is never approval.
 
 ## Persistent state
 
-Each project owns `pipeline_state.json`:
-
-```text
-projects/<slug>/pipeline_state.json
-```
-
-It records:
-
-- current gate and per-gate status (`pending`, `proposed`, `approved`, `rejected`),
-- approval and rejection history with the human's statement,
-- tasks, assets, tests, issues, and the next safe recovery step.
-
-The source of truth on resume is the state file, not conversation history.
+`projects/<slug>/pipeline_state.json` is the resume source of truth. It records
+the current gate, proposal/approval/rejection history with the human's exact
+statement, tasks with dependencies and evidence, assets, tests, issues, and the
+next safe step.
 
 ```bash
 python3 tools/pipeline_state.py show --project projects/<slug>
-python3 tools/pipeline_state.py propose --project projects/<slug> --gate A --evidence "<paths>" --note "<change>"
-python3 tools/pipeline_state.py approve --project projects/<slug> --gate A --user-statement "<approval>"
-python3 tools/pipeline_state.py reject --project projects/<slug> --gate A --reason "<reason>" --user-statement "<reply>"
-python3 tools/pipeline_state.py record-test --project projects/<slug> --gate A --name "<check>" --status PASS --command "<command>" --evidence "<path>"
+python3 tools/pipeline_state.py next-task --project projects/<slug>
+python3 tools/pipeline_state.py record-task --project projects/<slug> --task-id T2 \
+  --status verified --owner gameplay --acceptance "player moves" \
+  --verification "smoke PASS" --evidence projects/<slug>/artifacts/qa_report.json
+python3 tools/pipeline_state.py propose --project projects/<slug> --gate A \
+  --evidence "<paths>" --note "<change>"
+python3 tools/pipeline_state.py approve --project projects/<slug> --gate A \
+  --user-statement "<exact human approval>"
 python3 tools/pipeline_state.py validate --project projects/<slug>
 ```
 
-`approve` refuses an empty statement. A successful command, a generated plan,
-or file existence is never treated as approval.
+A task cannot be `verified` without evidence or verification text, or while a
+matching gate test is `FAIL`. Legacy `pending`/`complete` statuses remain valid
+for existing projects.
 
-## Workspace bootstrap
+## Event log
+
+`projects/<slug>/artifacts/events.jsonl` records task starts/completions,
+delegations, errors, validations, approvals, and rejections.
 
 ```bash
-python3 tools/bootstrap_project.py \
-  --workspace "$PWD" \
-  --slug my_game \
-  --title "My Game"
+python3 tools/opengame_log.py append --project projects/<slug> \
+  --event delegation --agent modeling --task T3 --status started \
+  --message "prop brief accepted"
+python3 tools/opengame_log.py tail --project projects/<slug> --limit 20
+python3 tools/opengame_log.py summary --project projects/<slug>
+python3 tools/opengame_log.py validate --project projects/<slug>
 ```
 
-The script creates `projects/my_game/` and links `tools/`, `templates/`,
-`AGENTS.md`, and `.gitignore` back to the toolkit. It refuses to overwrite an
-existing project. It writes `project.json`, `GAME_SPEC.md`,
-`ASSET_LICENSES.md`, `pipeline_state.json`, and a minimal Godot project. Run
-toolkit commands from the workspace root; the `tools/` link is at the workspace
-root, not inside each project.
-
-The planner then fills the spec and task list. Gate A is proposed only after
-`tools/validate_spec.py` passes or its remaining failures are explicitly
-recorded.
+Secret-like keys are redacted; long values are truncated. The log is evidence
+for recovery and retrospectives, not a replacement for `pipeline_state.json`.
 
 ## Resume protocol
 
-1. Read `pipeline_state.json`.
-2. Show the current gate, approvals, open issues, and next safe step.
-3. Continue only the approved milestone.
-4. If state is missing but a project exists, ask before creating or adopting
-   state.
-5. Never re-run approved work merely because a new session started.
-
-## Validation performed
-
-```bash
-opencode debug agent automated-game-dev-agent
-opencode debug skill
-python3 tools/bootstrap_project.py --workspace <temp> --slug test_game --title "Test Game"
-python3 tools/pipeline_state.py validate --project <temp>/projects/test_game
-```
-
-Results:
-
-- Agent loads as `primary`, with `question` and `skill` tools enabled.
-- Skill discovery returns 14 skills, including all six game-pipeline skills.
-- Bootstrap creates the expected files, symlinks, and `current_gate=A`.
-- `tools/check_env.sh` returns `ENV_CHECK=PASS` from both the toolkit root and a
-  linked workspace; `env.sh` resolves the real toolkit root through symlinks.
-- State validation returns `STATE_CHECK=PASS`.
-- Blender MCP responds to `get_scene_info`.
-- `tools/run_poc.sh` returns `POC_RESULT=PASS` with all eight gates PASS.
-
-## Known limitations
-
-- Humanoid character rigging and animation are not yet tested. Only one-bone
-  prop animation has passed Blender export, Godot import, runtime state, and
-  preview inspection.
-- The existing `projects/prop_poc` is a legacy PoC without a
-  `pipeline_state.json`; it has not been retrofitted with recorded approvals.
-- OpenCode must be restarted before the global agent appears in the TUI.
-- The agent's global path is machine-specific; moving the toolkit requires
-  updating the agent prompt and `skills.paths`.
+1. Read `AGENTS.md` and `project.json`.
+2. Show state, next task, and recent events.
+3. Identify the current gate and its approval status.
+4. Continue only the approved milestone.
+5. If state is missing but a project exists, ask before creating or adopting it.
+6. Never re-run approved work only because a new session started.

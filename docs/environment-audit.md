@@ -110,3 +110,37 @@ with this NVIDIA/X11 setup. Forward+ (Vulkan) is not required for low-poly work.
 
 Ready for the first deliverable. The only non-default requirement is using the
 pinned local Godot binary and its already-installed 4.6.1 templates.
+
+## Second-draft verification (2026-10-23)
+
+The OpenGame second draft was verified against the same host after adding
+project agents, commands, state extensions, event logging, adoption, QA report,
+Android wrappers, and a blank-image check.
+
+| Check | Command | Result |
+|---|---|---|
+| Unit tests | `python3 -m unittest discover -s tools/tests -v` | PASS, 30 tests |
+| OpenCode config | `opencode debug config` | `default_agent=opengame`, 9 agents, 12 commands |
+| Agent discovery | `opencode agent list` | primary + 8 specialists discovered |
+| Android capability | `tools/godot/check_android.sh` | SDK/templates/JDK/keystore present; 0 devices |
+| Android export | `tools/godot/export_android.sh projects/sky_runner/godot` | PASS, 27,472,284-byte debug APK |
+| New workspace | `tools/install_opengame.sh` + bootstrap | PASS, scaffold imported and rendered |
+| Scaffold screenshot | `tools/godot/screenshot.sh` | PASS, 1280x720, stddev 0.0367, inspected |
+| Crystal state | `tools/verify_opengame.sh --crystal ...` | PASS |
+| Crystal content/runtime/gameplay/visual | `tools/verify_opengame.sh --crystal ... --full` | PASS |
+| Crystal build | `tools/godot/export_build.sh ...` | PASS, 71,110,432 bytes |
+| Crystal binary hash | `sha256sum ...` | `334409f5...3824b4`, unchanged |
+
+The crystal visual artifact is
+`projects/crystal_test/artifacts/screenshots/verify_opengame.png` outside this
+repository. It was inspected: the drone, arena, three crystals, HUD counter, and
+controls are visible.
+
+A live routing smoke test ran `opencode run --agent opengame` and delegated a
+read-only README inspection to `game-design` through the native `task` tool. The
+subagent returned the title and 12 commands; the lead independently verified the
+count. No files were modified. Evidence:
+`/tmp/opencode/live_delegation.jsonl`.
+
+Remaining `NOT RUN`: real Android device launch, Android interaction, Android
+performance, and iOS.
