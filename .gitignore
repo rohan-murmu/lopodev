@@ -1,0 +1,23 @@
+# Tool binaries (installed locally, never committed)
+.tools/
+
+# Godot import/cache data
+.godot/
+*.godot/
+
+# Build outputs
+build/
+projects/*/build/
+projects/*/godot/build/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Temporary pipeline staging
+projects/*/godot/.pipeline/
+
+# OS/editor noise
+.DS_Store
+*.swp
