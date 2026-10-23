@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Adopt an existing Godot project into an OpenGame project context.
+"""Adopt an existing Godot project into an LopoDev project context.
 
-The game files are never copied, moved, or edited. OpenGame adds only its own
+The game files are never copied, moved, or edited. LopoDev adds only its own
 context files under ``projects/<slug>/`` and points ``project.json`` at the
 existing Godot directory. Refuses to overwrite an existing project context.
 """
@@ -127,7 +127,7 @@ def adoption_report(slug: str, title: str, godot_dir: Path, parsed: dict,
         lines.append("No GLB files were found. Record scene-authored geometry manually.")
     lines += [
         "",
-        "## Files created by OpenGame",
+        "## Files created by LopoDev",
         "",
         "- `project.json` - machine-readable context and ownership",
         "- `GAME_SPEC.md` - adoption draft to complete before Gate A",
@@ -138,7 +138,7 @@ def adoption_report(slug: str, title: str, godot_dir: Path, parsed: dict,
         "## Safety",
         "",
         "No game source, scene, script, asset or build output was copied, moved,",
-        "edited, or deleted. OpenGame references the Godot project in place.",
+        "edited, or deleted. LopoDev references the Godot project in place.",
         "",
         "## Next safe step",
         "",
@@ -160,7 +160,7 @@ First milestone: verified baseline without modifying existing gameplay
 
 ## Existing project
 
-- Godot directory (outside OpenGame context): `{parsed.get('godot_dir', '')}`
+- Godot directory (outside LopoDev context): `{parsed.get('godot_dir', '')}`
 - Main scene: `{scene}`
 - Scenes found: {len(files['scenes'])}
 - Scripts found: {len(files['scripts'])}
@@ -240,7 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--godot-dir", required=True,
                         help="existing Godot project directory (read-only)")
     parser.add_argument("--project", required=True,
-                        help="OpenGame context directory, e.g. projects/my_game")
+                        help="LopoDev context directory, e.g. projects/my_game")
     parser.add_argument("--slug", required=True)
     parser.add_argument("--title", required=True)
     parser.add_argument("--workspace", default=None)
@@ -256,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
     project_dir = Path(args.project).expanduser().resolve()
     state_file = project_dir / state.STATE_FILENAME
     if state_file.exists() or (project_dir / "project.json").exists():
-        print(f"ERROR: OpenGame context already exists; refusing to overwrite: {project_dir}",
+        print(f"ERROR: LopoDev context already exists; refusing to overwrite: {project_dir}",
               file=sys.stderr)
         return 2
     try:

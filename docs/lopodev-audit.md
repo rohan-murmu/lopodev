@@ -1,8 +1,8 @@
-# OpenGame Repository Audit
+# LopoDev Repository Audit
 
 Date: 2026-10-23
 Audit baseline commit: `f2c259f` (`docs: record environment audit and implementation plan`)
-Repository: `/media/rohan/D5/MyProjects/automated-game-dev-agent`
+Repository: `/media/rohan/D5/MyProjects/lopodev`
 
 ## Executive summary
 
@@ -14,7 +14,7 @@ agents, no slash commands, no structured event log, no project adoption path,
 and no Android wrapper.
 
 This audit records what was observed before the second-draft changes. Later
-implementation is tracked separately in `docs/opengame-architecture.md`.
+implementation is tracked separately in `docs/lopodev-architecture.md`.
 
 ## Evidence
 
@@ -54,7 +54,7 @@ Crystal binary SHA-256:
 
 - OpenCode `1.18.35` is installed.
 - The only custom agent was global:
-  `~/.config/opencode/agents/automated-game-dev-agent.md`, mode `primary`.
+  `~/.config/opencode/agents/lopodev.md`, mode `primary`.
 - The global agent had embedded domain procedures and broad edit/bash access,
   but was not discoverable as a project team and had no specialist delegation.
 - Project skills were discoverable but not routed by a dedicated orchestrator.
@@ -112,7 +112,7 @@ Host facts:
 
 ## Gaps found
 
-1. No project-local `opengame` primary agent or specialist team.
+1. No project-local `lopodev` primary agent or specialist team.
 2. No slash-command workflows.
 3. No structured JSONL event log for delegation, errors, and gate decisions.
 4. No task dependencies, readiness selection, or evidence requirement in state.

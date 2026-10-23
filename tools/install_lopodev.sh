@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install OpenGame into an existing workspace without touching user files.
-# usage: tools/install_opengame.sh [workspace] [--dry-run]
+# Install LopoDev into an existing workspace without touching user files.
+# usage: tools/install_lopodev.sh [workspace] [--dry-run]
 set -euo pipefail
 
 TOOLKIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -66,13 +66,13 @@ if [[ -e "$CONFIG" ]]; then
   if python3 - "$CONFIG" <<'PY' >/dev/null 2>&1
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as handle:
-    raise SystemExit(0 if json.load(handle).get("default_agent") == "opengame" else 1)
+    raise SystemExit(0 if json.load(handle).get("default_agent") == "lopodev" else 1)
 PY
   then
     echo "ALREADY_CONFIGURED=$CONFIG"
     skipped=$((skipped + 1))
   else
-    echo "WARN_EXISTS=$CONFIG (not modified; default_agent is not opengame)" >&2
+    echo "WARN_EXISTS=$CONFIG (not modified; default_agent is not lopodev)" >&2
     warnings=$((warnings + 1))
   fi
 else
@@ -86,7 +86,7 @@ from pathlib import Path
 path, toolkit = sys.argv[1], sys.argv[2]
 config = {
     "$schema": "https://opencode.ai/config.json",
-    "default_agent": "opengame",
+    "default_agent": "lopodev",
     "mcp": {
         "blender": {
             "type": "local",

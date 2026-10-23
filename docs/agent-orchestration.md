@@ -2,12 +2,12 @@
 
 ## Native OpenCode structure
 
-OpenGame uses project-local OpenCode agents. There is no custom runtime.
+LopoDev uses project-local OpenCode agents. There is no custom runtime.
 
 ```text
 .opencode/
   agents/
-    opengame.md          # primary
+    lopodev.md          # primary
     game-design.md
     modeling.md
     animation.md
@@ -20,19 +20,19 @@ OpenGame uses project-local OpenCode agents. There is no custom runtime.
   skills/                # reusable procedures
 ```
 
-`opencode.json` sets `default_agent: opengame`. A workspace created by
-`tools/install_opengame.sh` or `tools/bootstrap_project.py` links `.opencode/`
+`opencode.json` sets `default_agent: lopodev`. A workspace created by
+`tools/install_lopodev.sh` or `tools/bootstrap_project.py` links `.opencode/`
 to the toolkit, so agents and commands are discovered without copying files.
 
 Verify discovery:
 
 ```bash
 opencode agent list
-opencode debug agent opengame
+opencode debug agent lopodev
 opencode debug config
 ```
 
-The legacy global `automated-game-dev-agent` may remain on the machine; OpenGame
+The legacy global `lopodev` may remain on the machine; LopoDev
 does not depend on it and does not overwrite it.
 
 ## Delegation
@@ -96,12 +96,12 @@ for existing projects.
 delegations, errors, validations, approvals, and rejections.
 
 ```bash
-python3 tools/opengame_log.py append --project projects/<slug> \
+python3 tools/lopodev_log.py append --project projects/<slug> \
   --event delegation --agent modeling --task T3 --status started \
   --message "prop brief accepted"
-python3 tools/opengame_log.py tail --project projects/<slug> --limit 20
-python3 tools/opengame_log.py summary --project projects/<slug>
-python3 tools/opengame_log.py validate --project projects/<slug>
+python3 tools/lopodev_log.py tail --project projects/<slug> --limit 20
+python3 tools/lopodev_log.py summary --project projects/<slug>
+python3 tools/lopodev_log.py validate --project projects/<slug>
 ```
 
 Secret-like keys are redacted; long values are truncated. The log is evidence

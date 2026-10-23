@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Fast deterministic verification of the OpenGame toolkit.
-# usage: tools/verify_opengame.sh [--crystal <project_dir>] [--full]
+# Fast deterministic verification of the LopoDev toolkit.
+# usage: tools/verify_lopodev.sh [--crystal <project_dir>] [--full]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -40,15 +40,15 @@ python3 - "$config" <<'PY'
 import json
 import sys
 data = json.loads(sys.argv[1])
-assert data.get("default_agent") == "opengame", data.get("default_agent")
+assert data.get("default_agent") == "lopodev", data.get("default_agent")
 agents = data.get("agent") or {}
 commands = data.get("command") or {}
 expected_agents = {
-    "opengame", "game-design", "modeling", "animation", "level-design",
+    "lopodev", "game-design", "modeling", "animation", "level-design",
     "gameplay", "ui", "optimization", "qa-release",
 }
 expected_commands = {
-    "opengame", "init-game", "adopt-game", "character", "prop", "animate",
+    "lopodev", "init-game", "adopt-game", "character", "prop", "animate",
     "mechanic", "level", "mobile-ui", "diagnose", "optimize", "release",
 }
 missing_agents = expected_agents - set(agents)
@@ -68,7 +68,7 @@ fi
 
 if [[ -n "$CRYSTAL" ]]; then
   check crystal_state python3 "$ROOT/tools/pipeline_state.py" validate --project "$CRYSTAL"
-  check crystal_events python3 "$ROOT/tools/opengame_log.py" validate --project "$CRYSTAL" --allow-missing
+  check crystal_events python3 "$ROOT/tools/lopodev_log.py" validate --project "$CRYSTAL" --allow-missing
   if [[ "$FULL" -eq 1 ]]; then
     GODOT_DIR="$CRYSTAL/godot"
     check content env TARGET_NODE=Drone TARGET_GLB=res://assets/models/sm_hover_drone.glb \
@@ -78,13 +78,13 @@ if [[ -n "$CRYSTAL" ]]; then
     check gameplay "$GODOT" --headless --path "$GODOT_DIR" \
       --script res://tests/gameplay_test.gd
     check visual "$ROOT/tools/godot/screenshot.sh" "$GODOT_DIR" \
-      "$CRYSTAL/artifacts/screenshots/verify_opengame.png"
+      "$CRYSTAL/artifacts/screenshots/verify_lopodev.png"
   fi
 fi
 
 if [[ "$fail" -eq 0 ]]; then
-  echo "OPENGAME_VERIFY=PASS"
+  echo "LOPODEV_VERIFY=PASS"
   exit 0
 fi
-echo "OPENGAME_VERIFY=FAIL failures=$fail" >&2
+echo "LOPODEV_VERIFY=FAIL failures=$fail" >&2
 exit 1

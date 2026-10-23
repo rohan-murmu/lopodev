@@ -31,7 +31,7 @@ GATES = [
 GATE_IDS = [gate_id for gate_id, _ in GATES]
 GATE_NAMES = dict(GATES)
 VALID_GATE_STATUS = {"pending", "proposed", "approved", "rejected"}
-# Canonical OpenGame task states. ``pending`` and ``complete`` are retained as
+# Canonical LopoDev task states. ``pending`` and ``complete`` are retained as
 # legacy aliases so projects created by the first draft keep validating.
 TASK_STATUSES = {
     "planned", "in_progress", "blocked", "needs_approval", "verified", "failed",
@@ -404,7 +404,7 @@ SKILL_OWNER = {
     "game-world": "level-design",
     "godot-gameplay": "gameplay",
     "mobile-low-poly": "ui",
-    "opengame-workflow": "opengame",
+    "lopodev-workflow": "lopodev",
     "game-qa": "qa-release",
 }
 

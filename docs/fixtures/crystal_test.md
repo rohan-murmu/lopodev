@@ -35,10 +35,10 @@ crystal_test/projects/crystal_test/
 ## Verification
 
 ```bash
-tools/verify_opengame.sh \
+tools/verify_lopodev.sh \
   --crystal /media/rohan/D5/MyProjects/crystal_test/projects/crystal_test
 
-tools/verify_opengame.sh \
+tools/verify_lopodev.sh \
   --crystal /media/rohan/D5/MyProjects/crystal_test/projects/crystal_test --full
 ```
 
@@ -53,7 +53,7 @@ tools/godot/export_build.sh projects/crystal_test/godot Linux \
 
 Last verified: 2026-10-23. The rebuilt binary hash matched the baseline. The
 screenshot at
-`projects/crystal_test/artifacts/screenshots/verify_opengame.png` was inspected
+`projects/crystal_test/artifacts/screenshots/verify_lopodev.png` was inspected
 and shows the drone, arena, three crystals, HUD, and controls.
 
 ## Rules

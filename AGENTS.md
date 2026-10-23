@@ -1,10 +1,10 @@
-# AGENTS.md - OpenGame
+# AGENTS.md - LopoDev
 
-OpenGame builds playable low-poly 3D games with Blender, Godot, and an
+LopoDev builds playable low-poly 3D games with Blender, Godot, and an
 OpenCode agent team. The lead plans first, delegates one bounded task at a
 time, verifies independently, and reports only evidence that actually exists.
 
-The default primary agent is `opengame`. Project-local specialists are
+The default primary agent is `lopodev`. Project-local specialists are
 `game-design`, `modeling`, `animation`, `level-design`, `gameplay`, `ui`,
 `optimization`, and `qa-release`. Slash commands live in `.opencode/commands/`.
 
@@ -30,7 +30,7 @@ The default primary agent is `opengame`. Project-local specialists are
    Do not generate a whole game in one giant script.
 8. **Never approve a human gate on the user's behalf.** A passing command, a
    generated plan, file existence, or silence is not approval.
-9. **Do not build a parallel agent runtime.** OpenGame uses native OpenCode
+9. **Do not build a parallel agent runtime.** LopoDev uses native OpenCode
    agents, the `task` tool, commands, skills, and files. The Python tools are
    deterministic helpers, not an orchestration framework.
 10. **Mobile is separate evidence.** Android export success is not device,
@@ -40,12 +40,12 @@ The default primary agent is `opengame`. Project-local specialists are
 ## Install into a workspace
 
 ```bash
-tools/install_opengame.sh /path/to/workspace
+tools/install_lopodev.sh /path/to/workspace
 ```
 
 This links `tools/`, `templates/`, `AGENTS.md`, `.gitignore`, and `.opencode/`
 without overwriting existing files, creates `projects/`, and writes
-`opencode.json` with `default_agent: opengame`. A new project can also be
+`opencode.json` with `default_agent: lopodev`. A new project can also be
 bootstrapped directly:
 
 ```bash
@@ -56,14 +56,15 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 
 | Purpose | Command |
 |---|---|
-| Install OpenGame into a workspace | `tools/install_opengame.sh <workspace>` |
+| Install the LopoDev CLI | `bin/lopodev install-cli` |
+| Install LopoDev into a workspace | `tools/install_lopodev.sh <workspace>` |
 | Create a project workspace | `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"` |
 | Adopt an existing Godot project | `python3 tools/adopt_project.py --godot-dir <dir> --project projects/<slug> --slug <slug> --title "<title>"` |
 | Show/resume project state | `python3 tools/pipeline_state.py show --project projects/<slug>` |
 | Next task / all tasks | `python3 tools/pipeline_state.py next-task --project projects/<slug>` |
 | Load pinned paths | `source tools/env.sh` |
 | Environment check | `tools/check_env.sh` |
-| Append/read event evidence | `python3 tools/opengame_log.py append --project projects/<slug> --event <name>` |
+| Append/read event evidence | `python3 tools/lopodev_log.py append --project projects/<slug> --event <name>` |
 | Blender script | `tools/blender/run.sh <script.py> [args...]` |
 | GLB validation | `python3 tools/blender/validate_asset.py <file.glb> [options]` |
 | Asset/animation preview | `python3 tools/blender/render_preview.py --blend <file.blend> --out-dir <dir>` |
@@ -75,7 +76,7 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 | Android capability check | `tools/godot/check_android.sh` |
 | Android debug/release APK | `tools/godot/export_android.sh <godot_dir> [--release]` |
 | QA report record/validate | `python3 tools/qa_report.py record ...` / `validate --project projects/<slug>` |
-| Toolkit verification | `tools/verify_opengame.sh [--crystal <project>] [--full]` |
+| Toolkit verification | `tools/verify_lopodev.sh [--crystal <project>] [--full]` |
 | Full PoC | `tools/run_poc.sh` |
 
 Godot is pinned at `.tools/godot/Godot_v4.6.1-stable_linux.x86_64` with export
@@ -96,12 +97,12 @@ templates `4.6.1.stable`. Blender is the installed 5.2.2 LTS. See
 
 ## Agent team and skill cooperation
 
-The `opengame` lead routes work; specialists execute bounded tasks and return
+The `lopodev` lead routes work; specialists execute bounded tasks and return
 evidence. Skills hold reusable procedures; they are not agents.
 
 | Agent | Primary scope | Default skills |
 |---|---|---|
-| `opengame` | Plan, route, verify, gate decisions | `opengame-workflow` |
+| `lopodev` | Plan, route, verify, gate decisions | `lopodev-workflow` |
 | `game-design` | Spec, tasks, acceptance, scope | `game-planner` |
 | `modeling` | Props/environment meshes, GLB, previews | `blender-modeling` |
 | `animation` | Rig, actions, animated GLB | `blender-animation` |
@@ -171,7 +172,7 @@ python3 tools/pipeline_state.py reject --project projects/<slug> --gate A --reas
 python3 tools/pipeline_state.py record-test --project projects/<slug> --gate A --name "<check>" --status PASS --command "<command>" --evidence "<path>"
 python3 tools/pipeline_state.py validate --project projects/<slug>
 python3 tools/qa_report.py validate --project projects/<slug>
-python3 tools/opengame_log.py validate --project projects/<slug>
+python3 tools/lopodev_log.py validate --project projects/<slug>
 ```
 
 Task statuses are `planned`, `in_progress`, `blocked`, `needs_approval`,

@@ -10,16 +10,16 @@ import sys
 from pathlib import Path
 
 KNOWN_SKILLS = {
-    # First-draft skills, still the domain procedures used by OpenGame.
+    # First-draft skills, still the domain procedures used by LopoDev.
     "game-planner",
     "blender-modeling",
     "blender-animation",
     "game-world",
     "godot-gameplay",
     "game-qa",
-    # OpenGame shared procedures.
+    # LopoDev shared procedures.
     "mobile-low-poly",
-    "opengame-workflow",
+    "lopodev-workflow",
 }
 KNOWN_GATES = {"generation", "asset", "import", "content", "runtime", "visual", "build", "manual"}
 TASK_STATUS = {

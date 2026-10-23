@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Append and inspect structured OpenGame events as JSON Lines.
+"""Append and inspect structured LopoDev events as JSON Lines.
 
 The log is intentionally lightweight and local: one JSON object per line under
 ``projects/<slug>/artifacts/events.jsonl`` by default. Events are evidence for

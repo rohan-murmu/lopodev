@@ -1,11 +1,11 @@
-# OpenGame Architecture and Implementation Plan
+# LopoDev Architecture and Implementation Plan
 
 Status: implemented in the working tree; deterministic and live routing checks pass
 Date: 2026-10-23
 
 ## Goal
 
-OpenGame is an OpenCode-native game-production toolkit. A lead agent plans,
+LopoDev is an OpenCode-native game-production toolkit. A lead agent plans,
 routes bounded tasks to specialists, enforces human approval gates, and reports
 only independently verified evidence. The repository stays a file-based toolkit;
 it is not a separate agent runtime or web application.
@@ -22,7 +22,7 @@ it is not a separate agent runtime or web application.
 
 ```text
 User
-  -> OpenCode primary agent: opengame
+  -> OpenCode primary agent: lopodev
      -> task tool
         -> 8 project-local specialist subagents
            -> shared skills (.opencode/skills)
@@ -38,7 +38,7 @@ approval and task state. `artifacts/events.jsonl` records what happened.
 
 | Agent | Mode | Scope | Must not |
 |---|---|---|---|
-| `opengame` | primary | Plan, route, verify, gate review | Approve on user's behalf; skip evidence |
+| `lopodev` | primary | Plan, route, verify, gate review | Approve on user's behalf; skip evidence |
 | `game-design` | subagent | Spec, tasks, acceptance, scope | Build assets or mechanics |
 | `modeling` | subagent | Blender props, GLB, previews | Edit scenes or gameplay |
 | `animation` | subagent | Rig, actions, animated GLB | Author gameplay or UI |
@@ -56,7 +56,7 @@ conditions.
 
 | Command | Outcome |
 |---|---|
-| `/opengame` | Resume: gate, next task, last events |
+| `/lopodev` | Resume: gate, next task, last events |
 | `/init-game` | Bootstrap and Gate A plan |
 | `/adopt-game` | Adopt an existing Godot project without copying it |
 | `/character` | Mesh then rig/animation through Gate C |
@@ -127,8 +127,8 @@ interaction, and performance evidence.
 - The first-draft `tools/`, skills, and project structure remain valid.
 - Existing projects with `pending`/`complete` tasks continue to validate.
 - Crystal's Godot directory and binaries remain outside the repository.
-- The global `automated-game-dev-agent` is not deleted or overwritten.
-- New workspaces receive an `opengame` default, local agents, Android preset and
+- The global `lopodev` is not deleted or overwritten.
+- New workspaces receive an `lopodev` default, local agents, Android preset and
   settings, and a minimal runnable scaffold clearly labeled as a scaffold.
 - Adopted projects keep their original Godot directory; no game file is copied.
 

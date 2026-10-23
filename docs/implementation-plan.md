@@ -1,5 +1,5 @@
-> **Superseded for OpenGame.** This document records the first-draft
-> single-agent milestone plan. See `docs/opengame-architecture.md` for the
+> **Superseded for LopoDev.** This document records the first-draft
+> single-agent milestone plan. See `docs/lopodev-architecture.md` for the
 > current agent team, commands, state, and verification plan.
 
 # Implementation Plan

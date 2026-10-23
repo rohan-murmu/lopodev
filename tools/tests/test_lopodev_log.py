@@ -1,4 +1,4 @@
-"""Tests for structured OpenGame event logging."""
+"""Tests for structured LopoDev event logging."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import opengame_log as log  # noqa: E402
+import lopodev_log as log  # noqa: E402
 
 
 def call(func, **kwargs) -> tuple[int, str]:

@@ -1,7 +1,7 @@
 # Environment Audit
 
 Audit date: 2026-10-23 (host time)
-Repository: `/media/rohan/D5/MyProjects/automated-game-dev-agent`
+Repository: `/media/rohan/D5/MyProjects/lopodev`
 Repository state at audit: empty directory, not a Git repository.
 
 ## Host
@@ -113,30 +113,30 @@ pinned local Godot binary and its already-installed 4.6.1 templates.
 
 ## Second-draft verification (2026-10-23)
 
-The OpenGame second draft was verified against the same host after adding
+The LopoDev second draft was verified against the same host after adding
 project agents, commands, state extensions, event logging, adoption, QA report,
 Android wrappers, and a blank-image check.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit tests | `python3 -m unittest discover -s tools/tests -v` | PASS, 30 tests |
-| OpenCode config | `opencode debug config` | `default_agent=opengame`, 9 agents, 12 commands |
+| Unit tests | `python3 -m unittest discover -s tools/tests -v` | PASS, 33 tests |
+| OpenCode config | `opencode debug config` | `default_agent=lopodev`, 9 agents, 12 commands |
 | Agent discovery | `opencode agent list` | primary + 8 specialists discovered |
 | Android capability | `tools/godot/check_android.sh` | SDK/templates/JDK/keystore present; 0 devices |
 | Android export | `tools/godot/export_android.sh projects/sky_runner/godot` | PASS, 27,472,284-byte debug APK |
-| New workspace | `tools/install_opengame.sh` + bootstrap | PASS, scaffold imported and rendered |
+| New workspace | `tools/install_lopodev.sh` + bootstrap | PASS, scaffold imported and rendered |
 | Scaffold screenshot | `tools/godot/screenshot.sh` | PASS, 1280x720, stddev 0.0367, inspected |
-| Crystal state | `tools/verify_opengame.sh --crystal ...` | PASS |
-| Crystal content/runtime/gameplay/visual | `tools/verify_opengame.sh --crystal ... --full` | PASS |
+| Crystal state | `tools/verify_lopodev.sh --crystal ...` | PASS |
+| Crystal content/runtime/gameplay/visual | `tools/verify_lopodev.sh --crystal ... --full` | PASS |
 | Crystal build | `tools/godot/export_build.sh ...` | PASS, 71,110,432 bytes |
 | Crystal binary hash | `sha256sum ...` | `334409f5...3824b4`, unchanged |
 
 The crystal visual artifact is
-`projects/crystal_test/artifacts/screenshots/verify_opengame.png` outside this
+`projects/crystal_test/artifacts/screenshots/verify_lopodev.png` outside this
 repository. It was inspected: the drone, arena, three crystals, HUD counter, and
 controls are visible.
 
-A live routing smoke test ran `opencode run --agent opengame` and delegated a
+A live routing smoke test ran `opencode run --agent lopodev` and delegated a
 read-only README inspection to `game-design` through the native `task` tool. The
 subagent returned the title and 12 commands; the lead independently verified the
 count. No files were modified. Evidence:

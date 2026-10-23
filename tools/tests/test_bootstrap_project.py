@@ -34,7 +34,7 @@ class BootstrapProjectTests(unittest.TestCase):
             self.assertTrue((workspace / ".opencode").is_symlink())
             self.assertTrue((workspace / "opencode.json").is_file())
             config = json.loads((workspace / "opencode.json").read_text())
-            self.assertEqual(config["default_agent"], "opengame")
+            self.assertEqual(config["default_agent"], "lopodev")
             godot_text = (project / "godot" / "project.godot").read_text()
             self.assertIn('run/main_scene="res://scenes/Main.tscn"', godot_text)
             self.assertIn("import_etc2_astc=true", godot_text)

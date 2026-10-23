@@ -85,7 +85,7 @@ fi
 JAVA_REAL="$(readlink -f "$JAVA_BIN")"
 JAVA_HOME_DETECTED="$(dirname "$(dirname "$JAVA_REAL")")"
 KEYSTORE="${ANDROID_DEBUG_KEYSTORE:-$HOME/.local/share/godot/keystores/debug.keystore}"
-TMP_CFG="$(mktemp -d /tmp/opengame_android_cfg.XXXXXX)"
+TMP_CFG="$(mktemp -d /tmp/lopodev_android_cfg.XXXXXX)"
 trap 'rm -rf "$TMP_CFG"' EXIT
 mkdir -p "$TMP_CFG/godot"
 cat >"$TMP_CFG/godot/editor_settings-4.6.tres" <<EOF

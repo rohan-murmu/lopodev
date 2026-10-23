@@ -101,7 +101,7 @@ config_version=5
 [application]
 
 config/name={json.dumps(title)}
-config/description="Created by OpenGame."
+config/description="Created by LopoDev."
 config/features=PackedStringArray("4.6", "GL Compatibility")
 run/main_scene="res://scenes/Main.tscn"
 
@@ -189,7 +189,7 @@ architectures/x86=false
 architectures/x86_64=false
 version/code=1
 version/name="1.0"
-package/unique_name="com.opengame.{slug}"
+package/unique_name="com.lopodev.{slug}"
 package/name="{slug}"
 package/signed=true
 texture_format/etc2_astc=true
@@ -217,14 +217,14 @@ offset_left = 24.0
 offset_top = 24.0
 offset_right = 640.0
 offset_bottom = 80.0
-text = "OpenGame scaffold - complete the plan before building"
+text = "LopoDev scaffold - complete the plan before building"
 """
 
 
 def opencode_config() -> str:
     return json.dumps({
         "$schema": "https://opencode.ai/config.json",
-        "default_agent": "opengame",
+        "default_agent": "lopodev",
         "mcp": {
             "blender": {
                 "type": "local",

@@ -1,6 +1,6 @@
-# OpenGame
+# LopoDev
 
-OpenGame builds playable low-poly 3D games with Blender, Godot 4.x, and native
+LopoDev builds playable low-poly 3D games with Blender, Godot 4.x, and native
 OpenCode agents. The lead agent plans first, delegates one bounded task at a
 time, verifies the evidence independently, and stops at explicit human approval
 gates.
@@ -18,26 +18,37 @@ agents, skills, commands, deterministic tools, and files.
 - Linux desktop with a display for the visual gate.
 
 The repository pins Godot under `.tools/godot/`. See
-`docs/environment-audit.md` and `docs/opengame-audit.md` for this host's actual
+`docs/environment-audit.md` and `docs/lopodev-audit.md` for this host's actual
 audited capabilities.
+
+## Install the CLI
+
+```bash
+bin/lopodev install-cli
+lopodev version
+```
+
+This links `lopodev` into `~/.local/bin` without overwriting an existing
+non-symlink. Use `lopodev install-cli /another/bin` to choose the directory.
 
 ## Install into a workspace
 
 ```bash
-tools/install_opengame.sh /path/to/workspace
+tools/install_lopodev.sh /path/to/workspace
+# or
+lopodev install /path/to/workspace
 ```
 
 This links `tools/`, `templates/`, `AGENTS.md`, `.gitignore`, and `.opencode/`,
 creates `projects/`, and writes a project `opencode.json` with
-`default_agent: opengame`. Existing files are never overwritten. Restart
+`default_agent: lopodev`. Existing files are never overwritten. Restart
 OpenCode in that workspace after installation.
 
 ## Quick start
 
 ```bash
 # New game
-python3 tools/bootstrap_project.py --workspace . --slug sky_runner \
-  --title "Sky Runner"
+lopodev new --slug sky_runner --title "Sky Runner"
 source tools/env.sh
 python3 tools/validate_spec.py projects/sky_runner/project.json
 python3 tools/pipeline_state.py sync-spec --project projects/sky_runner \
@@ -45,8 +56,8 @@ python3 tools/pipeline_state.py sync-spec --project projects/sky_runner \
 python3 tools/pipeline_state.py validate --project projects/sky_runner
 ```
 
-Then open OpenCode in the workspace and run `/init-game`, or ask `opengame` to
-continue. The first output is a measurable Gate A plan, not art.
+Then run `lopodev open` in the workspace, or open OpenCode and run
+`/init-game`. Ask `lopodev` to continue. The first output is a measurable Gate A plan, not art.
 
 Adopt an existing Godot game without copying or editing it:
 
@@ -61,7 +72,7 @@ python3 tools/adopt_project.py \
 
 | Agent | Responsibility |
 |---|---|
-| `opengame` | Plan, route, verify, approval gates |
+| `lopodev` | Plan, route, verify, approval gates |
 | `game-design` | Spec, tasks, scope, acceptance criteria |
 | `modeling` | Blender props, GLB, metadata, previews |
 | `animation` | Rigs, actions, animated GLB, channel report |
@@ -79,7 +90,7 @@ and stop conditions.
 
 | Command | Purpose |
 |---|---|
-| `/opengame` | Resume status and next safe action |
+| `/lopodev` | Resume status and next safe action |
 | `/init-game` | Bootstrap a project and plan Gate A |
 | `/adopt-game` | Adopt an existing Godot project |
 | `/character` | Character mesh and animation |
@@ -107,7 +118,7 @@ pass is not mobile evidence.
 python3 tools/pipeline_state.py show --project projects/<slug>
 python3 tools/pipeline_state.py next-task --project projects/<slug>
 python3 tools/qa_report.py validate --project projects/<slug>
-python3 tools/opengame_log.py summary --project projects/<slug>
+python3 tools/lopodev_log.py summary --project projects/<slug>
 ```
 
 ## Project layout
@@ -129,8 +140,8 @@ projects/<slug>/
 
 ## Documentation
 
-- `docs/opengame-audit.md` - audited capabilities, evidence, gaps, risks.
-- `docs/opengame-architecture.md` - agent architecture, state, gates, phases.
+- `docs/lopodev-audit.md` - audited capabilities, evidence, gaps, risks.
+- `docs/lopodev-architecture.md` - agent architecture, state, gates, phases.
 - `docs/agent-orchestration.md` - delegation and resume behavior.
 - `docs/environment-audit.md` - installed toolchain and verified commands.
 - `AGENTS.md` - binding rules for every agent.
