@@ -1,6 +1,6 @@
-# LoopDev (repository: LopoDev)
+# LopoDev (repository: LopoDev)
 
-LoopDev is an agent-assisted workflow for building and validating playable 3D
+LopoDev is an agent-assisted workflow for building and validating playable 3D
 games with Blender and Godot. Plans, skills, tools, evidence, and approval-gated
 state are kept in files so work can resume across sessions.
 
@@ -9,7 +9,7 @@ specialists, slash commands, and native delegation. Kilo Code has a selectable
 primary plus specialist subagents and shared skills. Cursor has project rules,
 specialist subagents, and shared skills. Other compatible agents can call
 optional project-scoped MCP tools. MCP does not automatically give an agent
-LoopDev orchestration or native specialist delegation.
+LopoDev orchestration or native specialist delegation.
 
 ## Quick start
 
@@ -17,28 +17,30 @@ Requirements: Python 3.12+, Godot for runtime/build checks, and Blender for asse
 authoring. OpenCode, Kilo, Cursor, and the MCP SDK are optional integrations.
 
 ```sh
-./bin/loopdev --version
-./bin/loopdev doctor
-./bin/loopdev install opencode --project /path/to/workspace --dry-run
-./bin/loopdev install opencode --project /path/to/workspace
+./bin/lopodev --version
+./bin/lopodev doctor
+./bin/lopodev install opencode --project /path/to/workspace --dry-run
+./bin/lopodev install opencode --project /path/to/workspace
 ```
 
-Other project adapters: `loopdev install kilo`, `loopdev install cursor`, or
-`loopdev install mcp`. Installers preserve existing paths, support `--dry-run`,
+Other project adapters: `lopodev install kilo`, `lopodev install cursor`, or
+`lopodev install mcp`. Installers preserve existing paths, support `--dry-run`,
 and do not modify user-level agent configuration. MCP setup writes a registration
 example which you manually merge into the selected client's MCP settings. Remove
-LoopDev-managed, unchanged files using `loopdev uninstall <target>`.
+LopoDev-managed, unchanged files using `lopodev uninstall <target>`.
 
-Existing OpenCode users can keep using `bin/lopodev`, `/init-game`, `/prop`, and
-the other established OpenCode commands.
+`bin/lopodev` is the only launcher. A deprecated `bin/loopdev` shim remains for
+one release. After install, OpenCode discovers `.opencode/agents`,
+`.opencode/commands`, and `.opencode/skills`; Kilo and Cursor share
+`resources/skills` through `.agents/skills`.
 
 ## Homebrew status
 
 The canonical repository is confirmed as `https://github.com/rohan-murmu/lopodev`
-and the local Git remote points there. No release tag/archive or repository
-`LICENSE` exists yet. Establish the project's license and publish a versioned
-archive before claiming public `brew tap` availability; the formula helper
-computes the checksum from that exact archive. See
+and the local Git remote points there. The repository ships an MIT `LICENSE`,
+but no release tag or archive is published yet. Publish a
+versioned archive before claiming public `brew tap` availability; the formula
+helper computes the checksum from that exact archive. See
 [`docs/installation.md`](docs/installation.md). A formula in this repository
 alone is not a tap.
 
@@ -66,39 +68,38 @@ tools/godot/export_android.sh projects/<slug>/godot --release
 tools/godot/export_android.sh projects/<slug>/godot --format aab --release
 ```
 
-The same workflow is available as `loopdev android-export` and the optional
-`loopdev_android_export` MCP tool. Release AAB export requires a release
+The same workflow is available as `lopodev android-export` and the optional
+`lopodev_android_export` MCP tool. Release AAB export requires a release
 keystore via `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`,
 `GODOT_ANDROID_KEYSTORE_RELEASE_USER`, and
 `GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD`, plus Godot's Gradle Android template.
 See [`docs/android-export.md`](docs/android-export.md) for signing, verification,
 and the difference between export evidence and device evidence.
 
-## Legacy LopoDev commands
+## Install the CLI
 
 ```bash
 bin/lopodev install-cli
-lopodev version
+lopodev --version
 ```
 
 This links `lopodev` into `~/.local/bin` without overwriting an existing
 non-symlink. Use `lopodev install-cli /another/bin` to choose the directory.
 
-The existing `lopodev` launcher remains for backwards compatibility. The new
-multi-platform installer is `loopdev`.
+## Repository layout
 
-## Legacy OpenCode workspace setup
-
-```bash
-tools/install_lopodev.sh /path/to/workspace
-# or
-lopodev install /path/to/workspace
+```text
+resources/skills/          # canonical, platform-neutral Agent Skills
+adapters/opencode/         # OpenCode agents and commands
+adapters/kilo/agents/      # Kilo primary and specialist wrappers
+adapters/cursor/rules|agents/
+tools/ bin/ docs/ templates/
 ```
 
-This links `tools/`, `templates/`, `AGENTS.md`, `README.md`, `.gitignore`, and `.opencode/`,
-creates `projects/`, and writes a project `opencode.json` with
-`default_agent: lopodev`. Existing files are never overwritten. Restart
-OpenCode in that workspace after installation.
+`.opencode/`, `.kilo/`, `.cursor/`, and `.agents/skills/` are generated install
+targets and are not edited by hand. `tools/install_lopodev.sh` is a deprecated
+wrapper around `lopodev install opencode` and never overwrites existing files.
+Restart the agent in that workspace after installation.
 
 ## Quick start
 
@@ -137,7 +138,7 @@ python3 tools/adopt_project.py \
 
 OpenCode delegates through its native `task` tool. Kilo and Cursor delegate via
 their own Task/subagent support; tasks stay bounded by shared scopes and evidence
-contracts. MCP clients receive tools, not an implicit LoopDev orchestrator.
+contracts. MCP clients receive tools, not an implicit LopoDev orchestrator.
 
 ## Commands
 

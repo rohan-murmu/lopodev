@@ -42,12 +42,12 @@ Crystal binary SHA-256:
 
 - `tools/`: deterministic Python and Bash helpers.
 - `templates/`: project spec and JSON templates.
-- `.opencode/skills/`: six domain skills.
+- `resources/skills/`: eight domain skills.
 - `docs/`: first-draft environment audit and implementation notes.
 - `projects/prop_poc/`: Blender prop and Godot scene proof.
 - `projects/terminal_tower/`: second proof-of-concept project.
 - `AGENTS.md`: first-draft single-agent operating rules.
-- `.mcp.json`: codemap MCP entry.
+- `.mcp.json`: codemap MCP entry (developer tooling, gitignored).
 - No `opencode.json`, project agents, or project commands at audit start.
 
 ## OpenCode configuration findings

@@ -32,12 +32,12 @@ def render(version: str, sha256: str, license_id: str) -> str:
     if not re.fullmatch(r"[A-Za-z0-9.-]+", license_id):
         raise ValueError("license must be a valid SPDX identifier")
     homepage = "https://github.com/rohan-murmu/lopodev"
-    archive_url = f"{homepage}/releases/download/v{version}/loopdev-{version}.tar.gz"
+    archive_url = f"{homepage}/releases/download/v{version}/lopodev-{version}.tar.gz"
     return f'''# typed: strict
 # frozen_string_literal: true
 
-# Formula for the LoopDev game-development workflow toolkit.
-class Loopdev < Formula
+# Formula for the LopoDev game-development workflow toolkit.
+class Lopodev < Formula
   desc "Agent-independent Blender and Godot game-development workflow toolkit"
   homepage "{homepage}"
   url "{archive_url}"
@@ -49,21 +49,21 @@ class Loopdev < Formula
 
   def install
     libexec.install "AGENTS.md", "README.md", "LICENSE", "VERSION", "opencode.json",
-                    "tools", "templates", ".opencode", "adapters", "docs"
-    wrapper = bin/"loopdev"
+                    "tools", "templates", "resources", "adapters", "docs"
+    wrapper = bin/"lopodev"
     wrapper.write <<~SH
       #!/bin/bash
-      export LOOPDEV_HOME="#{{opt_prefix}}/libexec"
-      exec "#{{formula_opt_bin("python@3.12")}}/python3.12" "#{{libexec}}/tools/loopdev_cli.py" "$@"
+      export LOPODEV_HOME="#{{opt_prefix}}/libexec"
+      exec "#{{formula_opt_bin("python@3.12")}}/python3.12" "#{{libexec}}/tools/lopodev_cli.py" "$@"
     SH
     wrapper.chmod 0755
   end
 
   test do
-    assert_match "loopdev #{version}", shell_output("#{{bin}}/loopdev --version")
-    assert_match "install", shell_output("#{{bin}}/loopdev --help")
-    assert_path_exists libexec/".opencode/agents/lopodev.md"
-    assert_path_exists libexec/".opencode/skills/game-planner/SKILL.md"
+    assert_match "lopodev #{version}", shell_output("#{{bin}}/lopodev --version")
+    assert_match "install", shell_output("#{{bin}}/lopodev --help")
+    assert_path_exists libexec/"adapters/opencode/agents/lopodev.md"
+    assert_path_exists libexec/"resources/skills/game-planner/SKILL.md"
   end
 end
 '''
@@ -80,8 +80,8 @@ def main() -> int:
     try:
         if not args.archive_file.is_file():
             raise ValueError(f"archive file does not exist: {args.archive_file}")
-        if args.archive_file.name != f"loopdev-{args.version}.tar.gz":
-            raise ValueError("archive filename must match the release asset name: loopdev-<version>.tar.gz")
+        if args.archive_file.name != f"lopodev-{args.version}.tar.gz":
+            raise ValueError("archive filename must match the release asset name: lopodev-<version>.tar.gz")
         checksum = sha256_file(args.archive_file)
         formula = render(args.version, checksum, args.license_id)
     except ValueError as exc:

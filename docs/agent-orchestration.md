@@ -5,24 +5,19 @@
 LopoDev uses project-local OpenCode agents. There is no custom runtime.
 
 ```text
-.opencode/
-  agents/
-    lopodev.md          # primary
-    game-design.md
-    modeling.md
-    animation.md
-    level-design.md
-    gameplay.md
-    ui.md
-    optimization.md
-    qa-release.md
-  commands/              # slash workflows
-  skills/                # reusable procedures
+adapters/opencode/agents/     # source: primary + 8 specialists
+adapters/opencode/commands/   # source: slash workflows
+resources/skills/             # source: reusable procedures
+
+.opencode/                    # generated, gitignored
+  agents -> adapters/opencode/agents
+  commands -> adapters/opencode/commands
+  skills/<name> -> resources/skills/<name>
 ```
 
-`opencode.json` sets `default_agent: lopodev`. A workspace created by
-`tools/install_lopodev.sh` or `tools/bootstrap_project.py` links `.opencode/`
-to the toolkit, so agents and commands are discovered without copying files.
+`opencode.json` sets `default_agent: lopodev`. `lopodev install opencode` (also
+invoked by `bootstrap_project.py`) creates the generated `.opencode/` links, so
+agents and commands are discovered without copying files.
 
 Verify discovery:
 

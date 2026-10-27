@@ -40,7 +40,7 @@ custom_template/debug=""
 custom_template/release=""
 gradle_build/use_gradle_build=false
 gradle_build/export_format=0
-package/unique_name="com.loopdev.fixture"
+package/unique_name="com.lopodev.fixture"
 version/code=1
 version/name="1.0"
 architectures/arm64-v8a=true
@@ -168,7 +168,7 @@ class AndroidExportTests(unittest.TestCase):
         self.assertEqual(result["format"], "apk")
         self.assertEqual(result["signature"], "PASS")
         self.assertEqual(result["device_gate"], "NOT RUN")
-        self.assertEqual(result["package_name"], "com.loopdev.fixture")
+        self.assertEqual(result["package_name"], "com.lopodev.fixture")
         self.assertEqual(result["architectures"], ["arm64-v8a"])
         self.assertFalse(result["gradle_build"])
         self.assertTrue(Path(result["artifact"]).is_file())
@@ -302,7 +302,7 @@ class AndroidExportTests(unittest.TestCase):
 
     def test_missing_package_name_is_rejected(self) -> None:
         self.set_preset(APK_PRESET.replace(
-            'package/unique_name="com.loopdev.fixture"', 'package/unique_name=""'))
+            'package/unique_name="com.lopodev.fixture"', 'package/unique_name=""'))
         with self.assertRaisesRegex(android_export.ExportError, "package/unique_name"):
             self.export()
 
@@ -355,7 +355,7 @@ class AndroidExportTests(unittest.TestCase):
         environment = dict(os.environ)
         environment.update(self.env)
         cli = subprocess.run(
-            [sys.executable, str(ROOT / "tools/loopdev_cli.py"), "android-export",
+            [sys.executable, str(ROOT / "tools/lopodev_cli.py"), "android-export",
              str(self.godot_dir), "--godot", str(self.godot), "--dry-run", "--json"],
             capture_output=True, text=True, env=environment, timeout=30, check=False)
         self.assertEqual(cli.returncode, 0, cli.stderr)

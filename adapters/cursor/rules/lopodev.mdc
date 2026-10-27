@@ -1,9 +1,9 @@
 ---
-description: Shared LoopDev rules for planning, building, validating, and delivering Blender/Godot games.
+description: Shared LopoDev rules for planning, building, validating, and delivering Blender/Godot games.
 alwaysApply: true
 ---
 
-Follow the workspace `AGENTS.md` as the canonical LoopDev workflow. Before
+Follow the workspace `AGENTS.md` as the canonical LopoDev workflow. Before
 editing a game project, read its `GAME_SPEC.md`, `project.json`, and
 `pipeline_state.json`, then choose one dependency-ready task. Use the existing
 skills discovered in `.agents/skills/` and deterministic tools under `tools/`; do not

@@ -16,7 +16,7 @@ class LopoDevCliTests(unittest.TestCase):
     def test_version_reports_toolkit_root(self) -> None:
         result = self.run_cli("version")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("lopodev 1.0.0", result.stdout)
+        self.assertIn(f"lopodev {(ROOT / 'VERSION').read_text().strip()}", result.stdout)
         self.assertIn(f"root={ROOT}", result.stdout)
 
     def test_install_cli_creates_symlink(self) -> None:

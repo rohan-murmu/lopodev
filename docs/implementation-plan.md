@@ -35,7 +35,7 @@ game request
 playable project + build + known limitations
 ```
 
-Skills live in `.opencode/skills/<name>/SKILL.md`. Shared contracts live in
+Skills live in `resources/skills/<name>/SKILL.md` and are linked into each platform's discovery path. Shared contracts live in
 `AGENTS.md`. Executable helpers live in `tools/` and never depend on a model
 call. Global agent registration and resume behavior are documented in
 `docs/agent-orchestration.md`.
@@ -79,8 +79,9 @@ projects/<game_slug>/
 
 ### M1 - Skills and agent contract
 
-- [ ] Six skills exist at `.opencode/skills/{game-planner,blender-modeling,
-      blender-animation,game-world,godot-gameplay,game-qa}/SKILL.md`.
+- [ ] Skills exist at `resources/skills/{game-planner,blender-modeling,
+      blender-animation,game-world,godot-gameplay,mobile-low-poly,
+      lopodev-workflow,game-qa}/SKILL.md`.
 - [ ] Each has valid YAML frontmatter (`name` equals folder, non-empty
       description), required inputs, outputs, numbered workflow, validation
       commands, and failure recovery.

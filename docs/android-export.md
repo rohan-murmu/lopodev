@@ -1,12 +1,12 @@
 # Android APK and AAB export
 
-LoopDev uses one deterministic exporter for Android artifacts:
+LopoDev uses one deterministic exporter for Android artifacts:
 
 ```text
 tools/godot/android_export.py
   -> tools/godot/export_android.sh       compatibility wrapper
-  -> loopdev android-export              CLI
-  -> loopdev_android_export              optional MCP tool
+  -> lopodev android-export              CLI
+  -> lopodev_android_export              optional MCP tool
 ```
 
 Do not add a second format-specific exporter. If the Android workflow changes,
@@ -42,7 +42,7 @@ Debug:
 ```bash
 tools/godot/export_android.sh projects/<slug>/godot
 # or
-loopdev android-export projects/<slug>/godot --format apk --mode debug
+lopodev android-export projects/<slug>/godot --format apk --mode debug
 ```
 
 Release APK:
@@ -132,7 +132,7 @@ signature status, and log paths.
 ## MCP
 
 ```text
-loopdev_android_export(
+lopodev_android_export(
   slug: str,
   format: "apk" | "aab" = "apk",
   mode: "debug" | "release" = "debug",
@@ -145,7 +145,7 @@ loopdev_android_export(
 The MCP tool resolves `project.json.godot_dir` or
 `projects/<slug>/godot`, rejects paths outside the configured workspace, and
 returns the same structured result as the CLI. An explicit `godot` executable
-must also stay inside the workspace or LoopDev checkout; omit it to use the
+must also stay inside the workspace or LopoDev checkout; omit it to use the
 server's `GODOT` or pinned build. It can execute Godot because export is its
 explicit purpose; other MCP tools remain bounded state/spec operations.
 

@@ -158,7 +158,7 @@ export evidence, not device or store evidence.
 | Debug APK | `python3 tools/godot/android_export.py <fixture> --format apk --mode debug` | PASS, 27,472,284 bytes, `AndroidManifest.xml`, `apksigner` PASS |
 | Release AAB | `python3 tools/godot/android_export.py <fixture> --format aab --mode release` | PASS, 25,611,281 bytes, `BundleConfig.pb`, `jarsigner` PASS |
 | Shell wrapper | `tools/godot/export_android.sh <fixture> --dry-run` | PASS, command parity; actual APK also PASS |
-| CLI | `loopdev android-export <fixture> --json` | PASS, actual 27,472,284-byte APK |
+| CLI | `lopodev android-export <fixture> --json` | PASS, actual 27,472,284-byte APK |
 
 The fixture, generated `android/` build template, test AAB, and temporary release
 keystore were outside the repository and are not deliverables. The release

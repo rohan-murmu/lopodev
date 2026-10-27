@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import lopodev_cli as cli  # noqa: E402
 import pipeline_state as state  # noqa: E402
 
 TOOLKIT_ROOT = Path(__file__).resolve().parents[1]
@@ -346,10 +347,13 @@ def main() -> int:
                          created, skipped, warnings)
         scaffold_symlink(workspace, ".gitignore", TOOLKIT_ROOT / ".gitignore",
                          created, skipped, warnings)
-        scaffold_symlink(workspace, ".opencode", TOOLKIT_ROOT / ".opencode",
-                         created, skipped, warnings)
         write_if_absent(workspace / "opencode.json", opencode_config(),
                         created, skipped)
+        for message in cli.install_opencode(TOOLKIT_ROOT, workspace, dry_run=False):
+            if message.startswith(("PRESERVED", "UNCHANGED", "ALREADY_PRESENT")):
+                skipped.append(message)
+            else:
+                created.append(message)
 
     summary = {
         "workspace": str(workspace),

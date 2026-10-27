@@ -2,7 +2,7 @@
 """Deterministic Godot Android APK/AAB export with verification.
 
 This module owns validation and artifact checks. The shell wrapper
-``tools/godot/export_android.sh`` and the ``loopdev android-export`` command call
+``tools/godot/export_android.sh`` and the ``lopodev android-export`` command call
 the same implementation, and the optional MCP server exposes it without
 duplicating export logic.
 """
@@ -52,7 +52,7 @@ class ExportError(RuntimeError):
 
 
 def toolkit_root() -> Path:
-    configured = os.environ.get("LOOPDEV_HOME")
+    configured = os.environ.get("LOPODEV_HOME") or os.environ.get("LOOPDEV_HOME")
     if configured:
         return Path(configured).expanduser().resolve()
     return Path(__file__).resolve().parents[2]
@@ -533,7 +533,7 @@ def export_project(godot_dir: str, export_format: str = "apk", mode: str = "debu
         run_import_gate(resolved_godot, godot_dir, import_log, environment, runner)
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="loopdev_android_cfg_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="lopodev_android_cfg_") as temporary:
         settings_name, settings_text = build_editor_settings(environment, resolved_godot, runner)
         settings_dir = Path(temporary) / "godot"
         settings_dir.mkdir()

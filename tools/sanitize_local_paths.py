@@ -9,8 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-LOCAL_PATH = re.compile(r'''(?<![A-Za-z0-9_])(?:/home/[^\s"'`]+|/Users/[^\s"'`]+|/media/[^\s"'`]+|/tmp/opencode(?:/[^\s"'`]*)?|[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\s"'`]+)''')
-LOCAL_PATH_BYTES = re.compile(rb"(?:/home/[^\x00\s\"'`]+|/Users/[^\x00\s\"'`]+|/media/[^\x00\s\"'`]+|/tmp/opencode(?:/[^\x00\s\"'`]*)?|[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\x00\s\"'`]+)")
+LOCAL_PATH = re.compile(r'''(?<![A-Za-z0-9_])(?:[/]home[/][^\s"'`]+|[/]Users[/][^\s"'`]+|[/]media[/][^\s"'`]+|[/]tmp[/]opencode(?:[/][^\s"'`]*)?|[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\s"'`]+)''')
+LOCAL_PATH_BYTES = re.compile(rb"(?:[/]home[/][^\x00\s\"'`]+|[/]Users[/][^\x00\s\"'`]+|[/]media[/][^\x00\s\"'`]+|[/]tmp[/]opencode(?:[/][^\x00\s\"'`]*)?|[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\x00\s\"'`]+)")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 

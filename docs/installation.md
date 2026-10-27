@@ -21,51 +21,50 @@
 From this checkout:
 
 ```sh
-./bin/loopdev --version
-./bin/loopdev doctor
-./bin/loopdev install opencode --project /path/to/workspace --dry-run
-./bin/loopdev install opencode --project /path/to/workspace
+./bin/lopodev --version
+./bin/lopodev doctor
+./bin/lopodev install opencode --project /path/to/workspace --dry-run
+./bin/lopodev install opencode --project /path/to/workspace
 ```
 
 Equivalent targets: `kilo`, `cursor`, and `mcp`. Use
-`loopdev uninstall <target> --dry-run` to preview a safe cleanup. Installers report each path,
+`lopodev uninstall <target> --dry-run` to preview a safe cleanup. Installers report each path,
 preserve unrelated existing files, and require the user to manually merge MCP
 registration into a client config. `doctor` reports missing optional tools but
 does not install software or change system settings.
 The generated OpenCode config keeps Blender MCP disabled until the user enables
 it; this avoids making the addon/server an installation prerequisite.
 
-OpenCode's existing `bin/lopodev` and `tools/install_lopodev.sh` remain available
-for backward compatibility. The new `loopdev` CLI is the cross-platform-neutral
-adapter setup entry point; on Windows, invoke it with `python
-tools/loopdev_cli.py` until a native Windows launcher is supplied.
+`bin/lopodev` is the CLI. `bin/loopdev` and `tools/install_lopodev.sh` remain as
+deprecated compatibility shims for one release. On Windows, invoke the CLI with
+`python tools/lopodev_cli.py` until a native Windows launcher is supplied.
 
 ## Homebrew status and release workflow
 
 The GitHub repository is confirmed as `https://github.com/rohan-murmu/lopodev`,
 and the local `origin` now points there. There are currently no release tags or
-published release archives, and there is no repository `LICENSE` file. The new
+published release archives. The repository now ships an MIT `LICENSE`. The new
 `.github/workflows/release.yml` builds a version-matched source tarball and
 SHA-256 sidecar when a `v*` tag is pushed. Do not claim public Homebrew
-availability until the project license is established, a release is published,
-and the formula is installed/tested from that release.
+availability until a release is published and the formula is installed/tested
+from that release.
 
-After the license is established and a versioned archive is published, download
+After a versioned archive is published, download
 the exact release asset and generate a tap formula. The helper computes and
 prints the SHA-256 from the supplied bytes; it does not guess a digest. The
 release URL pattern is
-`https://github.com/rohan-murmu/lopodev/releases/download/v<VERSION>/loopdev-<VERSION>.tar.gz`.
+`https://github.com/rohan-murmu/lopodev/releases/download/v<VERSION>/lopodev-<VERSION>.tar.gz`.
 
 ```sh
 python3 tools/homebrew_formula.py \
   --version <confirmed-version> \
-  --archive-file loopdev-<version>.tar.gz \
+  --archive-file lopodev-<version>.tar.gz \
   --license <confirmed-SPDX-license> \
-  --output Formula/loopdev.rb
-brew style Formula/loopdev.rb
-brew audit --strict --new --formula Formula/loopdev.rb
-brew install --build-from-source ./Formula/loopdev.rb
-brew test loopdev
+  --output Formula/lopodev.rb
+brew style Formula/lopodev.rb
+brew audit --strict --new --formula Formula/lopodev.rb
+brew install --build-from-source ./Formula/lopodev.rb
+brew test lopodev
 ```
 
 This generator intentionally refuses missing or malformed release metadata and
@@ -78,4 +77,4 @@ tap at that name.
 For future updates: update `VERSION`, publish a new versioned tagged archive,
 download it and generate the formula (which computes its SHA-256), then run the
 formula audit, install and test.
-Installed users update with `brew update && brew upgrade loopdev`.
+Installed users update with `brew update && brew upgrade lopodev`.

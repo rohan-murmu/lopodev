@@ -1,16 +1,20 @@
 # Troubleshooting
 
-- `loopdev doctor`: reports executable availability and installed adapter files.
+- `lopodev doctor`: reports executable availability and installed adapter files.
   Blender/Godot absence is not fatal to planning or state inspection.
-- `loopdev install ...` refuses to replace existing files. Inspect them and
+- `lopodev install ...` refuses to replace existing files. Inspect them and
   merge manually; there is no forced overwrite option.
+- `.opencode/`, `.kilo/`, `.cursor/`, and `.agents/skills/` are generated.
+  If an adapter is missing, run `lopodev install <target> --project <workspace>`
+  before reopening the client.
 - If OpenCode agents do not appear, reopen the project and run
   `opencode agent list` and `opencode debug config` from the project root.
-- If Kilo does not show LoopDev, verify `.kilo/agents/loopdev.md` and restart or
-  reload Kilo. Check that linked `.agents/skills/<name>/SKILL.md` targets exist.
+- If Kilo does not show LopoDev, verify `.kilo/agents/lopodev.md` and restart or
+  reload Kilo. Kilo discovers `skills.paths`; the installer links
+  `.kilo/skills/<name>` and `.agents/skills/<name>` from `resources/skills/`.
 - Cursor loads project rules in `.cursor/rules/*.mdc`; it does not offer the
   same primary-agent selector or guaranteed specialist delegation as OpenCode.
-- For MCP, install the optional SDK, ensure `.loopdev/mcp-server.json` points at
+- For MCP, install the optional SDK, ensure `.lopodev/mcp-server.json` points at
   the correct workspace, merge its entry into the client config, then restart
   the client. Stderr contains startup errors; stdout is reserved for MCP.
 - Godot failure: set `GODOT=/absolute/path/to/godot`; check version and project

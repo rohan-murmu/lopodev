@@ -1,14 +1,17 @@
-# AGENTS.md - LoopDev (LopoDev repository)
+# AGENTS.md - LopoDev (LopoDev repository)
 
-LoopDev builds playable 3D games with Blender and Godot. This file defines the
+LopoDev builds playable 3D games with Blender and Godot. This file defines the
 shared workflow contract: plan first, keep work bounded, verify independently,
 and report only evidence that actually exists. It is independent of an agent
 platform; OpenCode is the reference native adapter.
 
 The lead and specialist roles are `lopodev`, `game-design`, `modeling`,
 `animation`, `level-design`, `gameplay`, `ui`, `optimization`, and `qa-release`.
-Agent-specific registration and commands live in platform adapters such as
-`.opencode/`, `.kilo/`, and `.cursor/`.
+Platform-neutral skills live in `resources/skills/`. Each platform has a
+source adapter under `adapters/<platform>/` (`opencode`, `kilo`, `cursor`), and
+`lopodev install <platform>` generates the discovery paths `.opencode/`,
+`.kilo/`, `.cursor/`, and `.agents/skills/` in the target workspace. Generated
+adapter paths are not edited by hand.
 
 ## Non-negotiable rules
 
@@ -42,16 +45,16 @@ Agent-specific registration and commands live in platform adapters such as
 ## Install into a workspace
 
 ```bash
-loopdev install opencode --project /path/to/workspace
-loopdev install kilo --project /path/to/workspace
-loopdev install cursor --project /path/to/workspace
-loopdev install mcp --project /path/to/workspace
+lopodev install opencode --project /path/to/workspace
+lopodev install kilo --project /path/to/workspace
+lopodev install cursor --project /path/to/workspace
+lopodev install mcp --project /path/to/workspace
 tools/install_lopodev.sh /path/to/workspace
 ```
 
-`loopdev install` is the multi-platform project adapter installer; it refuses
+`lopodev install` is the multi-platform project adapter installer; it refuses
 existing conflicts and records created files for safe uninstall. The legacy
-`tools/install_lopodev.sh` installs the OpenCode-oriented workspace and never
+`tools/install_lopodev.sh` delegates to `lopodev install opencode` and never
 overwrites existing files. A new project can also be bootstrapped directly:
 
 ```bash
@@ -63,7 +66,7 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 | Purpose | Command |
 |---|---|
 | Install the LopoDev CLI | `bin/lopodev install-cli` |
-| Install LopoDev into a workspace | `tools/install_lopodev.sh <workspace>` |
+| Install LopoDev into a workspace | `bin/lopodev install opencode --project <workspace>` |
 | Create a project workspace | `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"` |
 | Adopt an existing Godot project | `python3 tools/adopt_project.py --godot-dir <dir> --project projects/<slug> --slug <slug> --title "<title>"` |
 | Show/resume project state | `python3 tools/pipeline_state.py show --project projects/<slug>` |
@@ -83,7 +86,7 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 | Android APK export | `tools/godot/android_export.py <godot_dir> --format apk --mode debug` |
 | Android release AAB | `tools/godot/android_export.py <godot_dir> --format aab --mode release` |
 | Compatibility wrapper | `tools/godot/export_android.sh <godot_dir> [--release]` |
-| CLI Android export | `loopdev android-export <godot_dir> --format apk --mode debug` |
+| CLI Android export | `lopodev android-export <godot_dir> --format apk --mode debug` |
 | QA report record/validate | `python3 tools/qa_report.py record ...` / `validate --project projects/<slug>` |
 | Toolkit verification | `tools/verify_lopodev.sh [--crystal <project>] [--full]` |
 | Full PoC | `tools/run_poc.sh` |
@@ -216,6 +219,19 @@ Rules:
   implied pass.
 
 ## Project layout and naming
+
+Toolkit source:
+
+```text
+resources/skills/          # canonical, platform-neutral Agent Skills
+adapters/opencode/         # OpenCode agents and commands
+adapters/kilo/agents/      # Kilo primary and specialist wrappers
+adapters/cursor/rules|agents/
+tools/ bin/ docs/ templates/
+.opencode/ .kilo/ .cursor/ .agents/   # generated install targets, gitignored
+```
+
+Project workspace:
 
 ```text
 projects/<game_slug>/

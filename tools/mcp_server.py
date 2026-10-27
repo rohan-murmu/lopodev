@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional, project-scoped MCP tools for LoopDev. Requires `pip install 'mcp>=2,<3'`."""
+"""Optional, project-scoped MCP tools for LopoDev. Requires `pip install 'mcp>=2,<3'`."""
 
 from __future__ import annotations
 
@@ -190,14 +190,14 @@ def main() -> int:
         from mcp.server import MCPServer
         from mcp.shared.exceptions import MCPError
     except ImportError:
-        print("LoopDev MCP requires the official Python MCP SDK. Install with: pip install 'mcp>=2,<3'",
+        print("LopoDev MCP requires the official Python MCP SDK. Install with: pip install 'mcp>=2,<3'",
               file=sys.stderr)
         return 2
 
-    server = MCPServer(name="loopdev", version="0.2.0")
+    server = MCPServer(name="lopodev", version="0.2.0")
 
     @server.tool()
-    def loopdev_status(slug: str) -> dict:
+    def lopodev_status(slug: str) -> dict:
         """Read the status, gate approvals, task counts, and recovery step for one project."""
         try:
             return status(workspace, slug)
@@ -205,7 +205,7 @@ def main() -> int:
             raise MCPError(-32602, str(exc)) from exc
 
     @server.tool()
-    def loopdev_next(slug: str) -> dict:
+    def lopodev_next(slug: str) -> dict:
         """Return the first pending task whose dependencies are verified."""
         try:
             return next_task(workspace, slug)
@@ -213,7 +213,7 @@ def main() -> int:
             raise MCPError(-32602, str(exc)) from exc
 
     @server.tool()
-    def loopdev_validate(slug: str) -> dict:
+    def lopodev_validate(slug: str) -> dict:
         """Validate the project's project.json spec and persistent pipeline state."""
         try:
             return validate_project(workspace, slug)
@@ -221,7 +221,7 @@ def main() -> int:
             raise MCPError(-32602, str(exc)) from exc
 
     @server.tool()
-    def loopdev_context(slug: str) -> dict:
+    def lopodev_context(slug: str) -> dict:
         """Return bounded project workflow status and excerpts from its spec/license record."""
         try:
             return context(workspace, slug)
@@ -229,7 +229,7 @@ def main() -> int:
             raise MCPError(-32602, str(exc)) from exc
 
     @server.tool()
-    def loopdev_checkpoint(slug: str, note: str) -> dict:
+    def lopodev_checkpoint(slug: str, note: str) -> dict:
         """Persist a short recovery checkpoint. Does not approve gates or run shell commands."""
         try:
             return checkpoint(workspace, slug, note)
@@ -237,7 +237,7 @@ def main() -> int:
             raise MCPError(-32602, str(exc)) from exc
 
     @server.tool()
-    def loopdev_android_export(slug: str, format: str = "apk", mode: str = "debug",
+    def lopodev_android_export(slug: str, format: str = "apk", mode: str = "debug",
                                preset: str = "Android", output: str = "",
                                godot: str = "") -> dict:
         """Export and verify a Godot Android APK or release AAB. Device/Play gates remain NOT RUN."""
@@ -249,6 +249,39 @@ def main() -> int:
         except android_export.ExportError as exc:
             code = -32602 if exc.exit_code == 2 else -32603
             raise MCPError(code, str(exc)) from exc
+
+
+    @server.tool()
+    def loopdev_status(slug: str) -> dict:
+        """Deprecated alias for lopodev_status."""
+        return lopodev_status(slug)
+
+    @server.tool()
+    def loopdev_next(slug: str) -> dict:
+        """Deprecated alias for lopodev_next."""
+        return lopodev_next(slug)
+
+    @server.tool()
+    def loopdev_validate(slug: str) -> dict:
+        """Deprecated alias for lopodev_validate."""
+        return lopodev_validate(slug)
+
+    @server.tool()
+    def loopdev_context(slug: str) -> dict:
+        """Deprecated alias for lopodev_context."""
+        return lopodev_context(slug)
+
+    @server.tool()
+    def loopdev_checkpoint(slug: str, note: str) -> dict:
+        """Deprecated alias for lopodev_checkpoint."""
+        return lopodev_checkpoint(slug, note)
+
+    @server.tool()
+    def loopdev_android_export(slug: str, format: str = "apk", mode: str = "debug",
+                               preset: str = "Android", output: str = "",
+                               godot: str = "") -> dict:
+        """Deprecated alias for lopodev_android_export."""
+        return lopodev_android_export(slug, format, mode, preset, output, godot)
 
     server.run(transport="stdio")
     return 0

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LoopDev installation, diagnostics, and adapter setup CLI."""
+"""LopoDev installation, diagnostics, and adapter setup CLI."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 def toolkit_root() -> Path:
-    configured = os.environ.get("LOOPDEV_HOME")
+    configured = os.environ.get("LOPODEV_HOME") or os.environ.get("LOOPDEV_HOME")
     if configured:
         return Path(configured).expanduser().resolve()
     return Path(__file__).resolve().parent.parent
@@ -61,10 +61,20 @@ def _install_file(src: Path, dst: Path, dry_run: bool) -> str:
     return f"{'WOULD_WRITE' if dry_run else 'WROTE'} {dst}"
 
 
+def same_existing_path(src: Path, dst: Path) -> bool:
+    """True when the destination already is the source, as in the toolkit checkout."""
+    try:
+        return dst.exists() and not dst.is_symlink() and src.resolve() == dst.resolve()
+    except OSError:
+        return False
+
+
 def _install_symlink(src: Path, dst: Path, dry_run: bool) -> str:
     if dst.exists() or dst.is_symlink():
         if dst.is_symlink() and dst.resolve() == src.resolve():
             return f"UNCHANGED {dst} -> {src}"
+        if same_existing_path(src, dst):
+            return f"ALREADY_PRESENT {dst}"
         raise FileExistsError(f"refusing to replace existing user path: {dst}")
     if not dry_run:
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -82,17 +92,28 @@ def preflight_file(src: Path, dst: Path, workspace: Path) -> None:
 
 def preflight_symlink(src: Path, dst: Path, workspace: Path) -> None:
     safe_destination(workspace, dst)
+    if same_existing_path(src, dst):
+        return
     if dst.exists() or dst.is_symlink():
         if not dst.is_symlink() or dst.resolve() != src.resolve():
             raise FileExistsError(f"refusing to replace existing user path: {dst}")
 
 
 def manifest_path(workspace: Path) -> Path:
-    return workspace / ".loopdev/managed-files.json"
+    return workspace / ".lopodev/managed-files.json"
+
+
+def manifest_read_path(workspace: Path) -> Path:
+    """Prefer the current manifest, falling back to the legacy loopdev location."""
+    current = manifest_path(workspace)
+    legacy = workspace / ".loopdev/managed-files.json"
+    if not current.exists() and legacy.is_file():
+        return legacy
+    return current
 
 
 def load_manifest(workspace: Path) -> dict:
-    path = manifest_path(workspace)
+    path = manifest_read_path(workspace)
     safe_destination(workspace, path)
     if path.is_symlink():
         raise ValueError(f"refusing to use symlinked ownership manifest: {path}")
@@ -100,7 +121,7 @@ def load_manifest(workspace: Path) -> dict:
         return {"schema_version": 1, "files": {}}
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("schema_version") != 1 or not isinstance(data.get("files"), dict):
-        raise ValueError(f"invalid LoopDev installer manifest: {path}")
+        raise ValueError(f"invalid LopoDev installer manifest: {path}")
     return data
 
 
@@ -114,6 +135,7 @@ def record_created(workspace: Path, target: str, messages: list[str]) -> None:
         if not (creates or shared_reference or preserved_contract):
             continue
         path_text = message.split(" -> ", 1)[0].split(" ", 1)[1]
+        path_text = path_text.split(";", 1)[0].strip()
         path = Path(os.path.abspath(path_text))
         try:
             relative = path.relative_to(workspace.resolve()).as_posix()
@@ -148,29 +170,43 @@ def record_created(workspace: Path, target: str, messages: list[str]) -> None:
 
 def managed_path_allowed(target: str, relative: str) -> bool:
     parts = Path(relative).parts
+    shared_skills = len(parts) == 3 and parts[:2] == (".agents", "skills")
     if target == "opencode":
-        return (relative in {".opencode", "tools", "templates", "AGENTS.md", "opencode.json"}
-                or (len(parts) == 3 and parts[:2] == (".agents", "skills")))
+        return (relative in {"tools", "templates", "AGENTS.md", "opencode.json",
+                             ".opencode/agents", ".opencode/commands"}
+                or (len(parts) == 3 and parts[:2] == (".opencode", "skills"))
+                or shared_skills)
     if target == "kilo":
         return (relative in {"AGENTS.md", "tools", "templates"}
                 or (len(parts) == 3 and parts[:2] == (".kilo", "agents") and parts[2].endswith(".md"))
-                or (len(parts) == 3 and parts[:2] == (".agents", "skills")))
+                or (len(parts) == 3 and parts[:2] == (".kilo", "skills"))
+                or shared_skills)
     if target == "cursor":
-        return (relative in {"AGENTS.md", "tools", "templates", ".cursor/rules/loopdev.mdc"}
+        return (relative in {"AGENTS.md", "tools", "templates", ".cursor/rules/lopodev.mdc"}
                 or (len(parts) == 3 and parts[:2] == (".cursor", "agents") and parts[2].endswith(".md"))
-                or (len(parts) == 3 and parts[:2] == (".agents", "skills")))
+                or shared_skills)
     if target == "mcp":
-        return relative == ".loopdev/mcp-server.json"
+        return relative == ".lopodev/mcp-server.json"
     return False
 
 
+def prune_empty_dirs(workspace: Path, relative_dirs: tuple[str, ...]) -> None:
+    for relative in relative_dirs:
+        directory = workspace / relative
+        try:
+            directory.rmdir()
+        except OSError:
+            continue
+
+
 def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
-    path = manifest_path(workspace)
+    path = manifest_read_path(workspace)
+    write_path = manifest_path(workspace)
     safe_destination(workspace, path)
     if path.is_symlink():
         raise ValueError(f"refusing to use symlinked ownership manifest: {path}")
     if not path.is_file():
-        return [f"NOT_INSTALLED {target}: no LoopDev ownership manifest at {path}"]
+        return [f"NOT_INSTALLED {target}: no LopoDev ownership manifest at {path}"]
     manifest = load_manifest(workspace)
     messages: list[str] = []
     remaining = dict(manifest["files"])
@@ -190,11 +226,11 @@ def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
         safe_destination(workspace, managed)
         if entry.get("kind") == "symlink":
             if not managed.is_symlink() or os.readlink(managed) != entry.get("link_target"):
-                messages.append(f"PRESERVED {managed}: symlink no longer matches LoopDev manifest")
+                messages.append(f"PRESERVED {managed}: symlink no longer matches LopoDev manifest")
                 continue
         elif entry.get("kind") == "file":
             if not managed.is_file() or hashlib.sha256(managed.read_bytes()).hexdigest() != entry.get("sha256"):
-                messages.append(f"PRESERVED {managed}: contents changed since LoopDev installed it")
+                messages.append(f"PRESERVED {managed}: contents changed since LopoDev installed it")
                 continue
         else:
             messages.append(f"PRESERVED {managed}: unknown manifest entry type")
@@ -206,16 +242,35 @@ def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
     if not dry_run:
         manifest["files"] = remaining
         if remaining:
-            path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        else:
-            path.unlink()
+            write_path.parent.mkdir(parents=True, exist_ok=True)
+            write_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        elif write_path.exists():
+            write_path.unlink()
+        legacy = workspace / ".loopdev/managed-files.json"
+        if path != write_path and legacy.exists():
+            legacy.unlink()
+        prune_empty_dirs(workspace, (".opencode/skills", ".opencode", ".kilo/agents", ".kilo/skills", ".kilo",
+                                     ".cursor/rules", ".cursor/agents", ".cursor",
+                                     ".agents/skills", ".agents", ".lopodev", ".loopdev"))
     return messages
 
 
 def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
     messages: list[str] = []
     opencode = workspace / ".opencode"
-    preflight_symlink(root / ".opencode", opencode, workspace)
+    if opencode.is_symlink():
+        raise FileExistsError(
+            f"refusing to replace legacy .opencode symlink; remove it and rerun: {opencode}")
+    if opencode.exists() and not opencode.is_dir():
+        raise FileExistsError(f"refusing to replace existing user path: {opencode}")
+    components = {"agents": root / "adapters/opencode/agents",
+                  "commands": root / "adapters/opencode/commands"}
+    for destination in components.values():
+        preflight_symlink(destination, opencode / destination.name, workspace)
+    skills = [skill for skill in sorted((root / "resources/skills").iterdir())
+              if skill.is_dir() and (skill / "SKILL.md").is_file()]
+    for skill in skills:
+        preflight_symlink(skill, opencode / "skills" / skill.name, workspace)
     config = workspace / "opencode.json"
     existing_config = None
     if config.exists():
@@ -227,15 +282,19 @@ def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
         preflight_file(root / "AGENTS.md", workspace / "AGENTS.md", workspace)
     for name in ("tools", "templates"):
         preflight_symlink(root / name, workspace / name, workspace)
-    if opencode.exists() or opencode.is_symlink():
-        if opencode.is_symlink() and opencode.resolve() == (root / ".opencode").resolve():
-            messages.append(f"UNCHANGED {opencode} -> {root / '.opencode'}")
-        else:
-            raise FileExistsError(f"refusing to replace existing user path: {opencode}")
-    else:
+    if not opencode.exists():
         if not dry_run:
-            opencode.symlink_to(root / ".opencode", target_is_directory=True)
-        messages.append(f"{'WOULD_LINK' if dry_run else 'LINKED'} {opencode} -> {root / '.opencode'}")
+            opencode.mkdir(parents=True)
+        messages.append(f"{'WOULD_MKDIR' if dry_run else 'MKDIR'} {opencode}")
+    for name, source in components.items():
+        messages.append(_install_symlink(source, opencode / name, dry_run))
+    skills_dir = opencode / "skills"
+    if not skills_dir.exists():
+        if not dry_run:
+            skills_dir.mkdir(parents=True)
+        messages.append(f"{'WOULD_MKDIR' if dry_run else 'MKDIR'} {skills_dir}")
+    for skill in skills:
+        messages.append(_install_symlink(skill, skills_dir / skill.name, dry_run))
 
     messages.extend(install_shared_contract(root, workspace, dry_run, include_skills=False))
 
@@ -270,21 +329,18 @@ def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
 
 
 def install_kilo(root: Path, workspace: Path, dry_run: bool) -> list[str]:
-    messages = []
-    agents = sorted((root / "adapters/kilo").glob("*.md")) + sorted((root / "adapters/kilo/agents").glob("*.md"))
+    agents = sorted((root / "adapters/kilo/agents").glob("*.md"))
+    skills = [skill for skill in sorted((root / "resources/skills").iterdir())
+              if skill.is_dir() and (skill / "SKILL.md").is_file()]
     for agent in agents:
         preflight_file(agent, workspace / ".kilo/agents" / agent.name, workspace)
+    for skill in skills:
+        preflight_symlink(skill, workspace / ".kilo/skills" / skill.name, workspace)
     preflight_shared_contract(root, workspace)
-    for skill in sorted((root / ".opencode/skills").iterdir()):
-        if skill.is_dir() and (skill / "SKILL.md").is_file():
-            preflight_symlink(skill, workspace / ".kilo/skills" / skill.name, workspace)
-    for agent in sorted((root / "adapters/kilo").glob("*.md")):
-        messages.append(_install_file(agent, workspace / ".kilo/agents" / agent.name, dry_run))
-    for agent in sorted((root / "adapters/kilo/agents").glob("*.md")):
-        messages.append(_install_file(agent, workspace / ".kilo/agents" / agent.name, dry_run))
-    for skill in sorted((root / ".opencode/skills").iterdir()):
-        if skill.is_dir() and (skill / "SKILL.md").is_file():
-            messages.append(_install_symlink(skill, workspace / ".kilo/skills" / skill.name, dry_run))
+    messages = [_install_file(agent, workspace / ".kilo/agents" / agent.name, dry_run)
+                for agent in agents]
+    messages.extend(_install_symlink(skill, workspace / ".kilo/skills" / skill.name, dry_run)
+                    for skill in skills)
     messages.extend(install_shared_contract(root, workspace, dry_run))
     return messages
 
@@ -300,7 +356,7 @@ def install_shared_contract(root: Path, workspace: Path, dry_run: bool,
     for name in ("tools", "templates"):
         messages.append(_install_symlink(root / name, workspace / name, dry_run))
     if include_skills:
-        for skill in sorted((root / ".opencode/skills").iterdir()):
+        for skill in sorted((root / "resources/skills").iterdir()):
             if skill.is_dir() and (skill / "SKILL.md").is_file():
                 messages.append(_install_symlink(skill, workspace / ".agents/skills" / skill.name,
                                                  dry_run))
@@ -314,19 +370,19 @@ def preflight_shared_contract(root: Path, workspace: Path, include_skills: bool 
     for name in ("tools", "templates"):
         preflight_symlink(root / name, workspace / name, workspace)
     if include_skills:
-        for skill in sorted((root / ".opencode/skills").iterdir()):
+        for skill in sorted((root / "resources/skills").iterdir()):
             if skill.is_dir() and (skill / "SKILL.md").is_file():
                 preflight_symlink(skill, workspace / ".agents/skills" / skill.name, workspace)
 
 
 def install_cursor(root: Path, workspace: Path, dry_run: bool) -> list[str]:
-    rule = root / "adapters/cursor/loopdev.mdc"
+    rule = root / "adapters/cursor/rules/lopodev.mdc"
     agents = sorted((root / "adapters/cursor/agents").glob("*.md"))
-    preflight_file(rule, workspace / ".cursor/rules/loopdev.mdc", workspace)
+    preflight_file(rule, workspace / ".cursor/rules/lopodev.mdc", workspace)
     for agent in agents:
         preflight_file(agent, workspace / ".cursor/agents" / agent.name, workspace)
     preflight_shared_contract(root, workspace)
-    messages = [_install_file(rule, workspace / ".cursor/rules/loopdev.mdc", dry_run)]
+    messages = [_install_file(rule, workspace / ".cursor/rules/lopodev.mdc", dry_run)]
     for agent in agents:
         messages.append(_install_file(agent, workspace / ".cursor/agents" / agent.name, dry_run))
     messages.extend(install_shared_contract(root, workspace, dry_run))
@@ -335,14 +391,14 @@ def install_cursor(root: Path, workspace: Path, dry_run: bool) -> list[str]:
 
 def install_mcp(root: Path, workspace: Path, dry_run: bool,
                 python_executable: str | None = None) -> list[str]:
-    target = workspace / ".loopdev/mcp-server.json"
+    target = workspace / ".lopodev/mcp-server.json"
     safe_destination(workspace, target)
     python_executable = python_executable or sys.executable
     resolved_python = shutil.which(python_executable) or python_executable
     if not dry_run and (not Path(resolved_python).is_file() or not os.access(resolved_python, os.X_OK)):
         raise FileNotFoundError(f"MCP Python executable is not executable: {python_executable}")
     command = [resolved_python, str(root / "tools/mcp_server.py"), "--root", str(workspace)]
-    payload = {"mcpServers": {"loopdev": {"command": command[0], "args": command[1:]}}}
+    payload = {"mcpServers": {"lopodev": {"command": command[0], "args": command[1:]}}}
     encoded = json.dumps(payload, indent=2) + "\n"
     if target.exists():
         if target.read_text(encoding="utf-8") == encoded:
@@ -373,10 +429,43 @@ def android_export_command(args) -> int:
     return android_export.main(argv)
 
 
+def install_cli(root: Path, bin_dir: str | None) -> int:
+    directory = Path(bin_dir or "~/.local/bin").expanduser()
+    target = directory / "lopodev"
+    source = root / "bin/lopodev"
+    if not source.is_file():
+        print(f"ERROR: launcher not found: {source}", file=sys.stderr)
+        return 2
+    if target.exists() and not target.is_symlink():
+        print(f"ERROR: {target} exists and is not a symlink; not overwriting", file=sys.stderr)
+        return 2
+    if target.is_symlink() and target.resolve() != source.resolve():
+        print(f"ERROR: {target} points elsewhere; not overwriting", file=sys.stderr)
+        return 2
+    directory.mkdir(parents=True, exist_ok=True)
+    if target.is_symlink():
+        target.unlink()
+    target.symlink_to(source)
+    print(f"INSTALLED_CLI={target}")
+    print(f"CLI_TARGET={source}")
+    return 0
+
+
+def open_command(args) -> int:
+    command = ["opencode", "--agent", "lopodev", *args.opencode_args]
+    try:
+        os.execvp(command[0], command)
+    except OSError as exc:
+        print(f"ERROR: cannot start opencode: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def doctor(root: Path, workspace: Path) -> int:
-    print(f"LoopDev {read_version(root)}")
+    print(f"LopoDev {read_version(root)}")
     print(f"CLI Python: {sys.executable} ({platform.python_version()})")
-    print(f"resources: {'OK' if (root / 'tools').is_dir() and (root / '.opencode/skills').is_dir() else 'MISSING'} {root}")
+    resources_ok = (root / 'tools').is_dir() and (root / 'resources/skills').is_dir() and (root / 'adapters').is_dir()
+    print(f"resources: {'OK' if resources_ok else 'MISSING'} {root}")
     blender = os.environ.get("BLENDER") or shutil.which("blender") or ("/snap/bin/blender" if Path("/snap/bin/blender").is_file() else None)
     godot = os.environ.get("GODOT") or next((str(p) for pattern in (
         ".tools/godot/Godot_v*_linux.x86_64", ".tools/godot/Godot_v*_macos.universal")
@@ -405,14 +494,14 @@ def doctor(root: Path, workspace: Path) -> int:
                 version = f" (version probe failed: {exc})"
         print(f"{label}: {found or 'not found'}{version}")
     projects = sorted((workspace / "projects").glob("*/project.json")) if (workspace / "projects").is_dir() else []
-    print(f"LoopDev projects: {len(projects)}")
+    print(f"LopoDev projects: {len(projects)}")
     for spec in projects:
         state_file = spec.parent / "pipeline_state.json"
         print(f"project {spec.parent.name}: spec=present state={'present' if state_file.is_file() else 'missing'}")
     print(f"workspace: {workspace} ({'exists' if workspace.is_dir() else 'missing'})")
     for rel, label in ((".opencode/agents/lopodev.md", "OpenCode project agent"),
-                       (".kilo/agents/loopdev.md", "Kilo project agent"),
-                       (".cursor/rules/loopdev.mdc", "Cursor project rule")):
+                       (".kilo/agents/lopodev.md", "Kilo project agent"),
+                       (".cursor/rules/lopodev.mdc", "Cursor project rule")):
         print(f"{label}: {'present' if (workspace / rel).exists() else 'not installed'}")
     try:
         import mcp  # noqa: F401
@@ -434,9 +523,9 @@ def doctor(root: Path, workspace: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="loopdev", description=__doc__)
+    parser = argparse.ArgumentParser(prog="lopodev", description=__doc__)
     parser.add_argument("--version", action="version",
-                        version=f"loopdev {read_version(toolkit_root())}")
+                        version=f"lopodev {read_version(toolkit_root())}")
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("doctor", help="check tools, adapters and optional dependencies")
     install = sub.add_parser("install", help="install a project-level agent adapter")
@@ -444,7 +533,7 @@ def main(argv: list[str] | None = None) -> int:
     install.add_argument("--project", default=".", help="workspace root (default: current directory)")
     install.add_argument("--dry-run", action="store_true")
     install.add_argument("--python", help="Python executable with MCP SDK installed (MCP target only)")
-    uninstall = sub.add_parser("uninstall", help="remove only unchanged files recorded as LoopDev-managed")
+    uninstall = sub.add_parser("uninstall", help="remove only unchanged files recorded as LopoDev-managed")
     uninstall.add_argument("target", choices=("opencode", "kilo", "cursor", "mcp"))
     uninstall.add_argument("--project", default=".", help="workspace root (default: current directory)")
     uninstall.add_argument("--dry-run", action="store_true")
@@ -463,18 +552,41 @@ def main(argv: list[str] | None = None) -> int:
     android.add_argument("--dry-run", action="store_true",
                          help="validate the request without exporting")
     android.add_argument("--json", action="store_true", help="print a JSON result")
+    open_parser = sub.add_parser("open", help="start OpenCode with the lopodev agent")
+    open_parser.add_argument("opencode_args", nargs=argparse.REMAINDER)
+    cli = sub.add_parser("install-cli", help="symlink this launcher onto PATH")
+    cli.add_argument("bin_dir", nargs="?", default="~/.local/bin")
+    new = sub.add_parser("new", help="bootstrap a new project in a workspace")
+    new.add_argument("bootstrap_args", nargs=argparse.REMAINDER)
+    verify = sub.add_parser("verify", help="run the toolkit verification checks")
+    verify.add_argument("verify_args", nargs=argparse.REMAINDER)
+    sub.add_parser("version", help="print version and toolkit root")
     sub.add_parser("help", help="show command help")
-    args = parser.parse_args(argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
     root = toolkit_root()
+    if argv and argv[0] == "new":
+        return subprocess.call([sys.executable, str(root / "tools/bootstrap_project.py"),
+                                *argv[1:]])
+    if argv and argv[0] == "verify":
+        return subprocess.call([str(root / "tools/verify_lopodev.sh"), *argv[1:]])
+    args = parser.parse_args(argv)
     if args.command in (None, "help"):
         parser.print_help()
         return 0
     if args.command == "doctor":
         return doctor(root, project_root(None))
-    if args.command == "update":
-        print("Update with the package manager used to install LoopDev.")
-        print("Homebrew: brew update && brew upgrade loopdev")
+    if args.command == "version":
+        print(f"lopodev {read_version(root)}")
+        print(f"root={root}")
         return 0
+    if args.command == "update":
+        print("Update with the package manager used to install LopoDev.")
+        print("Homebrew: brew update && brew upgrade lopodev")
+        return 0
+    if args.command == "install-cli":
+        return install_cli(root, args.bin_dir)
+    if args.command == "open":
+        return open_command(args)
     if args.command == "android-export":
         return android_export_command(args)
     workspace = project_root(args.project)

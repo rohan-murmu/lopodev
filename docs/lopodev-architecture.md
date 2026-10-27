@@ -25,7 +25,7 @@ User
   -> OpenCode primary agent: lopodev
      -> task tool
         -> 8 project-local specialist subagents
-           -> shared skills (.opencode/skills)
+           -> shared skills (resources/skills)
               -> deterministic tools (tools/)
                  -> files: spec, state, logs, assets, scenes, QA evidence
 ```

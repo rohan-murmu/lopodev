@@ -55,16 +55,16 @@ class McpProtocolTests(unittest.TestCase):
                 async with Client(server) as client:
                     tools = await client.list_tools()
                     self.assertEqual({tool.name for tool in tools.tools}, {
-                        "loopdev_status", "loopdev_next", "loopdev_validate",
-                        "loopdev_context", "loopdev_checkpoint",
-                        "loopdev_android_export",
+                        "lopodev_status", "lopodev_next", "lopodev_validate",
+                        "lopodev_context", "lopodev_checkpoint",
+                        "lopodev_android_export",
                     })
-                    result = await client.call_tool("loopdev_status", {"slug": "mcp_test"})
+                    result = await client.call_tool("lopodev_status", {"slug": "mcp_test"})
                     self.assertFalse(result.is_error)
                     self.assertTrue(any("mcp_test" in item.text for item in result.content
                                         if getattr(item, "text", None)))
                     with self.assertRaises(Exception) as error:
-                        await client.call_tool("loopdev_status", {"slug": "../escape"})
+                        await client.call_tool("lopodev_status", {"slug": "../escape"})
                     self.assertIn("snake_case", str(error.exception))
 
             asyncio.run(exercise())

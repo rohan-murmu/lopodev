@@ -18,7 +18,7 @@ TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))
 
 import homebrew_formula  # noqa: E402
-import loopdev_cli  # noqa: E402
+import lopodev_cli  # noqa: E402
 import mcp_server  # noqa: E402
 import pipeline_state  # noqa: E402
 import sanitize_local_paths  # noqa: E402
@@ -58,23 +58,91 @@ class AdapterTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_kilo_installer_is_idempotent_and_links_canonical_skills(self) -> None:
-        first = loopdev_cli.install_kilo(loopdev_cli.toolkit_root(), self.workspace, False)
-        second = loopdev_cli.install_kilo(loopdev_cli.toolkit_root(), self.workspace, False)
+        first = lopodev_cli.install_kilo(lopodev_cli.toolkit_root(), self.workspace, False)
+        second = lopodev_cli.install_kilo(lopodev_cli.toolkit_root(), self.workspace, False)
         self.assertTrue(any("LINKED" in item for item in first))
         self.assertFalse(any(item.startswith(("LINKED ", "WROTE ")) for item in second))
-        self.assertTrue((self.workspace / ".kilo/agents/loopdev.md").is_file())
+        self.assertTrue((self.workspace / ".kilo/agents/lopodev.md").is_file())
         skill = self.workspace / ".agents/skills/game-planner/SKILL.md"
         self.assertTrue(skill.is_file())
-        self.assertEqual(skill.resolve(), (loopdev_cli.toolkit_root() /
-                                           ".opencode/skills/game-planner/SKILL.md").resolve())
+        self.assertEqual(skill.resolve(), (lopodev_cli.toolkit_root() /
+                                           "resources/skills/game-planner/SKILL.md").resolve())
+
+    def test_kilo_install_links_kilo_skills_and_uninstall_removes_them(self) -> None:
+        root = lopodev_cli.toolkit_root()
+        messages = lopodev_cli.install_kilo(root, self.workspace, False)
+        lopodev_cli.record_created(self.workspace, "kilo", messages)
+        kilo_skill = self.workspace / ".kilo/skills/game-planner"
+        self.assertTrue(kilo_skill.is_symlink())
+        self.assertEqual(kilo_skill.resolve(),
+                         (root / "resources/skills/game-planner").resolve())
+        removed = lopodev_cli.uninstall_target(self.workspace, "kilo", False)
+        self.assertFalse(any("PRESERVED" in item for item in removed))
+        self.assertFalse(kilo_skill.exists() or kilo_skill.is_symlink())
+        self.assertFalse((self.workspace / ".kilo").exists())
+
+    def test_adapter_sources_mirror_install_layout(self) -> None:
+        root = lopodev_cli.toolkit_root()
+        for relative in ("adapters/opencode/agents/lopodev.md",
+                         "adapters/opencode/commands/lopodev.md",
+                         "adapters/kilo/agents/lopodev.md",
+                         "adapters/cursor/rules/lopodev.mdc",
+                         "adapters/cursor/agents/qa-release.md",
+                         "resources/skills/game-planner/SKILL.md"):
+            self.assertTrue((root / relative).is_file(), relative)
+    def test_opencode_generates_component_links_and_removes_them(self) -> None:
+        root = lopodev_cli.toolkit_root()
+        messages = lopodev_cli.install_opencode(root, self.workspace, False)
+        lopodev_cli.record_created(self.workspace, "opencode", messages)
+        opencode = self.workspace / ".opencode"
+        self.assertTrue(opencode.is_dir() and not opencode.is_symlink())
+        self.assertEqual((opencode / "agents").resolve(),
+                         (root / "adapters/opencode/agents").resolve())
+        self.assertEqual((opencode / "commands").resolve(),
+                         (root / "adapters/opencode/commands").resolve())
+        self.assertEqual((opencode / "skills/game-planner").resolve(),
+                         (root / "resources/skills/game-planner").resolve())
+        removed = lopodev_cli.uninstall_target(self.workspace, "opencode", False)
+        self.assertFalse(any("PRESERVED" in item for item in removed))
+        self.assertFalse(opencode.exists())
+
+    def test_shared_contract_file_survives_uninstall_of_one_target(self) -> None:
+        root = lopodev_cli.toolkit_root()
+        for target, installer in (("opencode", lopodev_cli.install_opencode),
+                                  ("kilo", lopodev_cli.install_kilo)):
+            messages = installer(root, self.workspace, False)
+            lopodev_cli.record_created(self.workspace, target, messages)
+        agents = self.workspace / "AGENTS.md"
+        self.assertTrue(agents.is_file())
+        removed = lopodev_cli.uninstall_target(self.workspace, "opencode", False)
+        self.assertFalse(any(str(agents) in item and "REMOVED" in item for item in removed))
+        self.assertTrue(agents.is_file())
+        manifest = lopodev_cli.load_manifest(self.workspace)
+        self.assertEqual(manifest["files"]["AGENTS.md"]["owners"], ["kilo"])
+
+    def test_uninstall_reads_legacy_loopdev_manifest(self) -> None:
+        source = self.workspace / ".cursor/agents/legacy.md"
+        source.parent.mkdir(parents=True)
+        source.write_text("legacy managed file")
+        digest = hashlib.sha256(source.read_bytes()).hexdigest()
+        legacy = self.workspace / ".loopdev/managed-files.json"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text(json.dumps({"schema_version": 1, "files": {
+            ".cursor/agents/legacy.md": {"target": "cursor", "owners": ["cursor"],
+                                         "kind": "file", "sha256": digest}}}))
+        messages = lopodev_cli.uninstall_target(self.workspace, "cursor", False)
+        self.assertTrue(any("REMOVED" in item for item in messages))
+        self.assertFalse(source.exists())
+        self.assertFalse(legacy.exists())
+        self.assertFalse((self.workspace / ".lopodev").exists())
 
     @unittest.skipUnless(shutil.which("kilo"), "Kilo CLI is not installed")
     def test_kilo_cli_discovers_installed_native_agents(self) -> None:
-        loopdev_cli.install_kilo(loopdev_cli.toolkit_root(), self.workspace, False)
+        lopodev_cli.install_kilo(lopodev_cli.toolkit_root(), self.workspace, False)
         result = subprocess.run([shutil.which("kilo"), "agent", "list"], cwd=self.workspace,
                                 text=True, capture_output=True, timeout=30, check=False)
         self.assertEqual(result.returncode, 0, result.stderr[-2000:])
-        for name in ("loopdev", "game-design", "modeling", "animation", "level-design",
+        for name in ("lopodev", "game-design", "modeling", "animation", "level-design",
                      "gameplay", "ui", "optimization", "qa-release"):
             self.assertIn(name, result.stdout)
         # Kilo's debug skill command requires KILO_CONFIG_DIR to discover project skills
@@ -87,57 +155,57 @@ class AdapterTests(unittest.TestCase):
             self.assertIn(name, skills.stdout)
 
     def test_uninstall_removes_unchanged_managed_files_but_keeps_user_edits(self) -> None:
-        root = loopdev_cli.toolkit_root()
-        messages = loopdev_cli.install_kilo(root, self.workspace, False)
-        loopdev_cli.record_created(self.workspace, "kilo", messages)
-        agent_file = self.workspace / ".kilo/agents/loopdev.md"
+        root = lopodev_cli.toolkit_root()
+        messages = lopodev_cli.install_kilo(root, self.workspace, False)
+        lopodev_cli.record_created(self.workspace, "kilo", messages)
+        agent_file = self.workspace / ".kilo/agents/lopodev.md"
         agent_file.write_text(agent_file.read_text() + "\nuser edit\n")
-        removed = loopdev_cli.uninstall_target(self.workspace, "kilo", False)
+        removed = lopodev_cli.uninstall_target(self.workspace, "kilo", False)
         self.assertFalse((self.workspace / ".agents/skills/game-planner").is_symlink())
         self.assertTrue(agent_file.is_file())
         self.assertTrue(any(item.startswith("PRESERVED ") for item in removed))
-        manifest = json.loads(loopdev_cli.manifest_path(self.workspace).read_text())
-        self.assertIn(".kilo/agents/loopdev.md", manifest["files"])
+        manifest = json.loads(lopodev_cli.manifest_path(self.workspace).read_text())
+        self.assertIn(".kilo/agents/lopodev.md", manifest["files"])
 
     def test_shared_links_are_retained_until_last_adapter_is_uninstalled(self) -> None:
-        root = loopdev_cli.toolkit_root()
-        for target, installer in (("kilo", loopdev_cli.install_kilo),
-                                  ("cursor", loopdev_cli.install_cursor)):
-            loopdev_cli.record_created(self.workspace, target,
+        root = lopodev_cli.toolkit_root()
+        for target, installer in (("kilo", lopodev_cli.install_kilo),
+                                  ("cursor", lopodev_cli.install_cursor)):
+            lopodev_cli.record_created(self.workspace, target,
                                        installer(root, self.workspace, False))
-        loopdev_cli.uninstall_target(self.workspace, "kilo", False)
+        lopodev_cli.uninstall_target(self.workspace, "kilo", False)
         self.assertTrue((self.workspace / "tools").is_symlink())
         self.assertTrue((self.workspace / ".agents/skills/game-planner").is_symlink())
-        loopdev_cli.uninstall_target(self.workspace, "cursor", False)
+        lopodev_cli.uninstall_target(self.workspace, "cursor", False)
         self.assertFalse((self.workspace / "tools").is_symlink())
         self.assertFalse((self.workspace / ".agents/skills/game-planner").is_symlink())
 
     def test_cursor_refuses_to_overwrite_custom_rule(self) -> None:
-        target = self.workspace / ".cursor/rules/loopdev.mdc"
+        target = self.workspace / ".cursor/rules/lopodev.mdc"
         target.parent.mkdir(parents=True)
         target.write_text("user rule")
         with self.assertRaises(FileExistsError):
-            loopdev_cli.install_cursor(loopdev_cli.toolkit_root(), self.workspace, False)
+            lopodev_cli.install_cursor(lopodev_cli.toolkit_root(), self.workspace, False)
         self.assertEqual(target.read_text(), "user rule")
 
     def test_install_refuses_paths_routed_through_external_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as outside:
             (self.workspace / ".cursor").symlink_to(outside, target_is_directory=True)
             with self.assertRaises(ValueError):
-                loopdev_cli.install_cursor(loopdev_cli.toolkit_root(), self.workspace, False)
+                lopodev_cli.install_cursor(lopodev_cli.toolkit_root(), self.workspace, False)
             self.assertEqual(list(Path(outside).iterdir()), [])
 
     def test_cursor_installs_native_subagents_and_shared_skills(self) -> None:
-        root = loopdev_cli.toolkit_root()
-        first = loopdev_cli.install_cursor(root, self.workspace, False)
-        second = loopdev_cli.install_cursor(root, self.workspace, False)
+        root = lopodev_cli.toolkit_root()
+        first = lopodev_cli.install_cursor(root, self.workspace, False)
+        second = lopodev_cli.install_cursor(root, self.workspace, False)
         self.assertTrue(any("LINKED" in item for item in first))
         self.assertFalse(any(item.startswith(("LINKED ", "WROTE ")) for item in second))
         self.assertTrue((self.workspace / ".cursor/agents/qa-release.md").is_file())
         self.assertTrue((self.workspace / ".agents/skills/game-qa/SKILL.md").is_file())
 
     def test_opencode_dry_run_does_not_write(self) -> None:
-        loopdev_cli.install_opencode(loopdev_cli.toolkit_root(), self.workspace, True)
+        lopodev_cli.install_opencode(lopodev_cli.toolkit_root(), self.workspace, True)
         self.assertFalse((self.workspace / ".opencode").exists())
         self.assertFalse((self.workspace / "opencode.json").exists())
 
@@ -145,7 +213,7 @@ class AdapterTests(unittest.TestCase):
         (self.workspace / "AGENTS.md").write_text("user instructions")
         original_config = '{"default_agent":"custom","model":"keep"}\n'
         (self.workspace / "opencode.json").write_text(original_config)
-        messages = loopdev_cli.install_opencode(loopdev_cli.toolkit_root(), self.workspace, False)
+        messages = lopodev_cli.install_opencode(lopodev_cli.toolkit_root(), self.workspace, False)
         self.assertTrue(any(item.startswith("LINKED ") and ".opencode" in item for item in messages))
         self.assertTrue((self.workspace / "tools/pipeline_state.py").is_file())
         self.assertTrue((self.workspace / "templates/GAME_SPEC.md").is_file())
@@ -155,14 +223,14 @@ class AdapterTests(unittest.TestCase):
     def test_mcp_registration_is_idempotent_and_does_not_touch_client_config(self) -> None:
         unrelated = self.workspace / "mcp.json"
         unrelated.write_text('{"mcpServers":{"codemap":{}}}\n')
-        root = loopdev_cli.toolkit_root()
-        first = loopdev_cli.install_mcp(root, self.workspace, False)
-        second = loopdev_cli.install_mcp(root, self.workspace, False)
+        root = lopodev_cli.toolkit_root()
+        first = lopodev_cli.install_mcp(root, self.workspace, False)
+        second = lopodev_cli.install_mcp(root, self.workspace, False)
         self.assertIn("WROTE", first[0])
         self.assertIn("UNCHANGED", second[0])
         self.assertEqual(unrelated.read_text(), '{"mcpServers":{"codemap":{}}}\n')
-        config = json.loads((self.workspace / ".loopdev/mcp-server.json").read_text())
-        self.assertEqual(config["mcpServers"]["loopdev"]["args"][-1], str(self.workspace))
+        config = json.loads((self.workspace / ".lopodev/mcp-server.json").read_text())
+        self.assertEqual(config["mcpServers"]["lopodev"]["args"][-1], str(self.workspace))
 
     def test_mcp_tools_scope_project_and_checkpoint(self) -> None:
         self.assertEqual(mcp_server.status(self.workspace, "test_game")["slug"], "test_game")
@@ -180,7 +248,7 @@ class AdapterTests(unittest.TestCase):
         formula = homebrew_formula.render(
             "1.2.3", "a" * 64, "MIT")
         self.assertIn('version "1.2.3"', formula)
-        self.assertIn('url "https://github.com/rohan-murmu/lopodev/releases/download/v1.2.3/loopdev-1.2.3.tar.gz"', formula)
+        self.assertIn('url "https://github.com/rohan-murmu/lopodev/releases/download/v1.2.3/lopodev-1.2.3.tar.gz"', formula)
         self.assertIn('sha256 "' + "a" * 64 + '"', formula)
         with self.assertRaises(ValueError):
             homebrew_formula.render("1.2.3", "fake", "MIT")
@@ -189,10 +257,10 @@ class AdapterTests(unittest.TestCase):
 
     def test_homebrew_formula_cli_hashes_the_exact_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            archive = Path(temporary) / "loopdev-1.2.3.tar.gz"
+            archive = Path(temporary) / "lopodev-1.2.3.tar.gz"
             content = b"versioned release archive test bytes"
             archive.write_bytes(content)
-            output = Path(temporary) / "loopdev.rb"
+            output = Path(temporary) / "lopodev.rb"
             result = subprocess.run([
                 sys.executable, str(TOOLS / "homebrew_formula.py"),
                 "--version", "1.2.3", "--archive-file", str(archive),
@@ -211,32 +279,32 @@ class AdapterTests(unittest.TestCase):
             return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body))
 
         png = (signature + chunk(b"IHDR", b"header")
-               + chunk(b"tEXt", b"Source\x00/media/owner/work/game.blend")
+               + chunk(b"tEXt", b"Source\x00" + ("/" + "media/owner/work/game.blend").encode())
                + chunk(b"IDAT", b"pixel bytes stay") + chunk(b"IEND", b""))
         cleaned, changed = sanitize_local_paths.sanitize_png(png)
         self.assertTrue(changed)
-        self.assertNotIn(b"/media/owner", cleaned)
+        self.assertNotIn(("/" + "media/owner").encode(), cleaned)
         self.assertIn(chunk(b"IDAT", b"pixel bytes stay"), cleaned)
-        self.assertEqual(sanitize_local_paths.sanitize_text("sdk=/Users/alice/Library/sdk"),
+        self.assertEqual(sanitize_local_paths.sanitize_text("sdk=" + "/" + "Users/alice/Library/sdk"),
                          "sdk=<LOCAL_PATH>")
 
-    def test_loopdev_launcher_loads_resources_outside_the_caller_directory(self) -> None:
+    def test_lopodev_launcher_loads_resources_outside_the_caller_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             package = Path(temporary)
             (package / "tools").mkdir()
-            (package / "tools/loopdev_cli.py").write_bytes((TOOLS / "loopdev_cli.py").read_bytes())
+            (package / "tools/lopodev_cli.py").write_bytes((TOOLS / "lopodev_cli.py").read_bytes())
             (package / "VERSION").write_text("9.8.7-test\n")
-            env = dict(os.environ, LOOPDEV_HOME=str(package))
-            result = subprocess.run([str(TOOLS.parent / "bin/loopdev"), "--version"],
+            env = dict(os.environ, LOPODEV_HOME=str(package))
+            result = subprocess.run([str(TOOLS.parent / "bin/lopodev"), "--version"],
                                     cwd=temporary, env=env, text=True, capture_output=True,
                                     timeout=10, check=False)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(result.stdout.strip(), "loopdev 9.8.7-test")
+            self.assertEqual(result.stdout.strip(), "lopodev 9.8.7-test")
 
     @unittest.skipUnless(shutil.which("brew"), "Homebrew CLI is not installed")
     def test_generated_formula_passes_homebrew_style_parser(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            formula = Path(temporary) / "loopdev.rb"
+            formula = Path(temporary) / "lopodev.rb"
             formula.write_text(homebrew_formula.render("1.2.3", "a" * 64, "MIT"))
             result = subprocess.run([shutil.which("brew"), "style", str(formula)],
                                     text=True, capture_output=True, timeout=90, check=False)
