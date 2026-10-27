@@ -31,7 +31,12 @@ class BootstrapProjectTests(unittest.TestCase):
                 self.assertTrue((project / relative).is_file(), relative)
             self.assertTrue((workspace / "tools").is_symlink())
             self.assertTrue((workspace / "AGENTS.md").is_symlink())
-            self.assertTrue((workspace / ".opencode").is_symlink())
+            self.assertTrue((workspace / ".opencode").is_dir())
+            self.assertFalse((workspace / ".opencode").is_symlink())
+            self.assertTrue((workspace / ".opencode/agents/lopodev.md").is_file())
+            self.assertTrue((workspace / ".opencode/commands").is_dir())
+            self.assertTrue(
+                (workspace / ".opencode/skills/game-planner/SKILL.md").is_file())
             self.assertTrue((workspace / "opencode.json").is_file())
             config = json.loads((workspace / "opencode.json").read_text())
             self.assertEqual(config["default_agent"], "lopodev")

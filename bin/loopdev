@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Deprecated compatibility shim: `loopdev` was renamed to `lopodev`.
+set -euo pipefail
+echo "WARNING: 'loopdev' is deprecated; use 'lopodev' instead." >&2
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/lopodev" "$@"

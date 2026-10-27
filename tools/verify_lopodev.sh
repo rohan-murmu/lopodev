@@ -31,7 +31,13 @@ check() {
 
 check unit_tests python3 -m unittest discover -s "$ROOT/tools/tests"
 check whitespace git -C "$ROOT" diff --check
+check sanitize python3 "$ROOT/tools/sanitize_local_paths.py" --check
 check android "$ROOT/tools/godot/check_android.sh"
+
+if [[ ! -e "$ROOT/.opencode/agents/lopodev.md" ]]; then
+  echo "INFO: installing generated OpenCode adapter for verification" >&2
+  "$ROOT/bin/lopodev" install opencode --project "$ROOT" >/dev/null
+fi
 
 echo "== agents and commands =="
 config="$(cd "$ROOT" && opencode debug config 2>/dev/null)"

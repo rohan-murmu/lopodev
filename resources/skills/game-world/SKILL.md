@@ -1,0 +1,103 @@
+---
+name: game-world
+description: Use after assets pass validation to build Godot 3D scenes and levels - importing GLB assets as instances, placing props, lighting, cameras, collision, spawn points, and verifying the scene loads and renders.
+license: MIT
+---
+
+# Game World
+
+Assemble validated Blender assets into a runnable Godot scene. This skill owns
+the scene tree, transforms, lighting, camera, environment, collision, and spawn
+layout. It does not write gameplay systems beyond minimal scene setup.
+
+## Required inputs
+
+- `project.json` / `GAME_SPEC.md` with the level brief and `main_scene`.
+- Validated `sm_<noun>.glb` + `.meta.json` files and their triangle reports.
+- A scene tree map: root type, expected node names, spawn points, camera intent,
+  lighting/mood, collision requirements.
+- Target Godot project:
+  `projects/<slug>/godot/project.godot`.
+
+## Expected outputs
+
+- `godot/scenes/<PascalCase>.tscn` with:
+  - imported GLB instances via `ext_resource type="PackedScene"`;
+  - a `Camera3D` with a deliberate transform;
+  - lighting and an environment/background;
+  - static collision for walkable/blocking geometry where required;
+  - named spawn/marker nodes (`Spawn_01`, `PlayerStart`, ...);
+  - no runtime-only gameplay logic beyond a thin scene script.
+- Scene node map in `projects/<slug>/docs/scene_<name>.md`.
+- Import/content/visual evidence paths in `artifacts/`.
+
+## Workflow
+
+1. Read the level brief and confirm asset paths and budgets from the spec.
+2. Confirm the GLB files exist and are validated. If not, stop and return to
+   `blender-modeling`/`blender-animation`.
+3. Create the Godot project only if absent. Never overwrite an existing
+   `project.godot` without inspecting it.
+4. Run the import gate:
+   ```bash
+   source tools/env.sh
+   "$GODOT" --headless --path projects/<slug>/godot --import
+   ```
+   Review the log for `ERROR:` or `SCRIPT ERROR:`. Asset import warnings caused
+   by the project must be fixed now.
+5. Author the scene incrementally. Reference the GLB as a PackedScene:
+   ```text
+   [ext_resource type="PackedScene" path="res://assets/models/sm_crate.glb" id="1"]
+   [node name="Prop_Crate" parent="." instance=ExtResource("1")]
+   ```
+   Keep transforms in meters and rotations in radians/degrees consistently.
+6. Add camera, key light, fill/ambient, ground, and background. Verify framing
+   with a graphical screenshot, not by guessing coordinates.
+7. Add collision. Static level geometry gets `StaticBody3D` + matching
+   `CollisionShape3D`. Character controllers are added by `godot-gameplay`.
+8. Validate scene content:
+   ```bash
+   TARGET_NODE=Prop_Crate TARGET_GLB=res://assets/models/sm_crate.glb \
+     tools/godot/validate.sh projects/<slug>/godot
+   ```
+9. Capture and inspect a screenshot:
+   ```bash
+   tools/godot/screenshot.sh projects/<slug>/godot \
+     projects/<slug>/artifacts/main_scene.png
+   ```
+   The screenshot must show the actual assets, not a blank/one-color frame.
+10. Record scene paths, transforms, camera parameters, and evidence for
+    `godot-gameplay` and `game-qa`.
+
+## Validation procedures
+
+- Import gate: headless import exit 0 with no project-caused errors.
+- Content gate: main scene instantiates; target GLB-derived node exists; mesh
+  surfaces > 0; materials > 0; AABB size > 0.
+- Placement gate: each asset's world transform is finite and within the level
+  bounds; origin-at-ground props sit at the intended height.
+- Visual gate: screenshot inspected; asset silhouette/color visible; not blank.
+- Collision gate: walkable surface and blocking objects have collision shapes
+  (verified by runtime movement tests in `godot-gameplay` when applicable).
+
+## Failure recovery
+
+- **GLB import fails** - validate the GLB outside Godot; re-export from Blender.
+  Check the import log for unsupported extensions.
+- **Scene instantiates but node is empty** - verify the GLB was imported before
+  scene load and that the ext_resource path is exact (`res://...glb`).
+- **Asset is tiny/huge** - check units and transform application in Blender; fix
+  the source rather than adding compensating scale.
+- **Black or blank screenshot** - add lights/environment, point the camera at
+  the asset, verify non-headless launch. A screenshot that exists but is blank
+  is a FAIL.
+- **Missing collision** - add collision shapes explicitly; glTF meshes do not
+  create collision automatically.
+- **Import log errors are environmental** - classify them (renderer/locale) and
+  record the warning; do not mark a project error as a pass.
+
+## Handoff
+
+Deliver scene paths, node map, expected target node names, camera/light setup,
+collision status, and screenshot evidence. Then `godot-gameplay` attaches
+mechanics.

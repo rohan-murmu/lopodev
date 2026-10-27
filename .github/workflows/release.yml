@@ -1,0 +1,50 @@
+name: Release source archive
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  source-archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Verify tag and packaged version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          file_version="$(tr -d '\r\n' < VERSION)"
+          test -s LICENSE
+          test "$tag_version" = "$file_version"
+          [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]]
+          python3 tools/sanitize_local_paths.py --check
+          python3 -m unittest discover -s tools/tests -v
+      - name: Build immutable source archive and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          archive="dist/lopodev-${version}.tar.gz"
+          git archive --format=tar.gz --prefix="lopodev-${version}/" "$GITHUB_SHA" > "$archive"
+          sha256sum "$archive" | tee "${archive}.sha256"
+      - name: Publish GitHub release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/lopodev-${version}.tar.gz" \
+            "dist/lopodev-${version}.tar.gz.sha256" \
+            --title "LopoDev ${version}" --generate-notes

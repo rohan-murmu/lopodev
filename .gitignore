@@ -14,9 +14,12 @@ projects/*/godot/build/
 __pycache__/
 *.py[cod]
 .venv/
+.pipeline_state.lock
 
-# Temporary pipeline staging
+# Temporary pipeline staging and install ownership
 projects/*/godot/.pipeline/
+.lopodev/
+.loopdev/
 
 # OS/editor noise
 .DS_Store
@@ -29,6 +32,17 @@ projects/*/godot/.pipeline/
 *.jks
 *.p12
 
-# OpenCode local/plugin noise
-.opencode/node_modules/
-.opencode/package-lock.json
+# Regenerated PoC artifacts (tracked summaries keep the outcome)
+projects/*/artifacts/previews/
+projects/*/artifacts/logs/
+
+# Generated adapter install targets (created by `lopodev install`)
+.opencode/
+.kilo/
+.cursor/
+.agents/
+
+# Local agent tooling, not part of LopoDev
+.codemap/
+.claude/
+.mcp.json

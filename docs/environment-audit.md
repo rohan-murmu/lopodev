@@ -1,7 +1,7 @@
 # Environment Audit
 
 Audit date: 2026-10-23 (host time)
-Repository: `/media/rohan/D5/MyProjects/lopodev`
+Repository: this checkout
 Repository state at audit: empty directory, not a Git repository.
 
 ## Host
@@ -12,7 +12,7 @@ Repository state at audit: empty directory, not a Git repository.
 | Desktop session | X11, `DISPLAY=:0` | `$DISPLAY`, `$XDG_SESSION_TYPE` |
 | GPU | NVIDIA GeForce GTX 1650, 4 GB VRAM, driver 580.178.04 | `glxinfo -B` |
 | OpenGL | 4.6.0 NVIDIA (compatibility profile available) | `glxinfo -B` |
-| Memory / disk | 29 GiB RAM; 381 GiB free on `/media/rohan/D5` | `free -h`, `df -h` |
+| Memory / disk | 29 GiB RAM; 381 GiB free on the host project volume | `free -h`, `df -h` |
 
 ## Required toolchain
 
@@ -90,8 +90,8 @@ with this NVIDIA/X11 setup. Forward+ (Vulkan) is not required for low-poly work.
 - Godot emits `xkbcommon` errors about `iso8859-1/Compose` on this host. They
   are host locale warnings, not project errors; rendering and exit codes are
   unaffected.
-- Blender is a classic-confined snap. It can read/write project paths under
-  `/media/rohan/D5`, verified during the probe.
+- Blender is a classic-confined snap. It can read/write approved project paths,
+  verified during the probe.
 
 ## Cost, licensing, and inference constraints
 
@@ -140,7 +140,28 @@ A live routing smoke test ran `opencode run --agent lopodev` and delegated a
 read-only README inspection to `game-design` through the native `task` tool. The
 subagent returned the title and 12 commands; the lead independently verified the
 count. No files were modified. Evidence:
-`/tmp/opencode/live_delegation.jsonl`.
+`<LOCAL_PATH>`.
 
 Remaining `NOT RUN`: real Android device launch, Android interaction, Android
 performance, and iOS.
+
+## Android export verification (2026-10-27)
+
+The shared Android exporter was tested against a temporary Godot fixture with
+the real pinned engine, Android SDK, JDK 17, and export templates. This is
+export evidence, not device or store evidence.
+
+| Check | Command | Result |
+|---|---|---|
+| Unit tests | `python3 -m unittest discover -s tools/tests -v` | PASS, 75 tests, 1 optional MCP test skipped |
+| Capability check | `tools/godot/check_android.sh` | PASS, `ANDROID_EXPORT_READY=1`; 0 devices |
+| Debug APK | `python3 tools/godot/android_export.py <fixture> --format apk --mode debug` | PASS, 27,472,284 bytes, `AndroidManifest.xml`, `apksigner` PASS |
+| Release AAB | `python3 tools/godot/android_export.py <fixture> --format aab --mode release` | PASS, 25,611,281 bytes, `BundleConfig.pb`, `jarsigner` PASS |
+| Shell wrapper | `tools/godot/export_android.sh <fixture> --dry-run` | PASS, command parity; actual APK also PASS |
+| CLI | `lopodev android-export <fixture> --json` | PASS, actual 27,472,284-byte APK |
+
+The fixture, generated `android/` build template, test AAB, and temporary release
+keystore were outside the repository and are not deliverables. The release
+keystore password was supplied only through the environment and was not written
+to evidence. Device launch, installation, touch input, performance, and
+Play Console acceptance remain `NOT RUN`.

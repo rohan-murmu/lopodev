@@ -20,6 +20,11 @@ SECRET_KEY_RE = re.compile(
     r"(token|secret|password|passwd|api[_-]?key|authorization|credential|private[_-]?key)",
     re.IGNORECASE,
 )
+SECRET_ASSIGN_RE = re.compile(
+    r"(?P<key>[\w.-]*(?:token|secret|password|passwd|api[_-]?key|authorization|credential|private[_-]?key)[\w.-]*\s*[:=]\s*)"
+    r"(?P<value>(?:bearer\s+)?(?:\"[^\"]*\"|'[^']*'|[^\s,;\"']+))",
+    re.IGNORECASE,
+)
 MAX_VALUE_CHARS = 2000
 EVENT_FIELDS = {
     "event", "agent", "gate", "task", "status", "command", "evidence",
@@ -33,6 +38,16 @@ def utc_now() -> str:
 
 def default_log(project: str) -> Path:
     return Path(project).expanduser().resolve() / "artifacts" / "events.jsonl"
+
+
+def append_event(project: str, *, event: str, message: str = "") -> Path:
+    """Append one sanitized event for internal callers such as the MCP adapter."""
+    path = default_log(project)
+    value = sanitize({"ts_utc": utc_now(), "event": event, "message": message})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
+    return path
 
 
 def resolve_log(args: argparse.Namespace) -> Path:
@@ -50,8 +65,11 @@ def sanitize(value, key: str = ""):
         return {str(k): sanitize(v, str(k)) for k, v in value.items()}
     if isinstance(value, list):
         return [sanitize(item, key) for item in value]
-    if isinstance(value, str) and len(value) > MAX_VALUE_CHARS:
-        return value[:MAX_VALUE_CHARS] + f"... <truncated {len(value) - MAX_VALUE_CHARS} chars>"
+    if isinstance(value, str):
+        value = SECRET_ASSIGN_RE.sub(
+            lambda match: match.group("key") + "<redacted>", value)
+        if len(value) > MAX_VALUE_CHARS:
+            return value[:MAX_VALUE_CHARS] + f"... <truncated {len(value) - MAX_VALUE_CHARS} chars>"
     return value
 
 
