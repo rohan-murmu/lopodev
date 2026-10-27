@@ -1,0 +1,17 @@
+---
+description: Shared LoopDev rules for planning, building, validating, and delivering Blender/Godot games.
+alwaysApply: true
+---
+
+Follow the workspace `AGENTS.md` as the canonical LoopDev workflow. Before
+editing a game project, read its `GAME_SPEC.md`, `project.json`, and
+`pipeline_state.json`, then choose one dependency-ready task. Use the existing
+skills discovered in `.agents/skills/` and deterministic tools under `tools/`; do not
+copy their instructions into this rule. Record verifiable results and evidence
+in the project's state, event log, and QA report. Never claim an unrun gate
+passed. Never treat generated output as human approval. Preserve user files and
+ask before destructive, scope-changing, publishing, or deployment operations.
+
+Cursor project rules guide the selected primary Cursor agent. Project subagents
+in `.cursor/agents/` offer specialist workflows through Cursor's Task tool, but
+they do not reproduce OpenCode command syntax or all OpenCode permissions.

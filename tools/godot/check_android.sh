@@ -15,14 +15,21 @@ optional_missing() { printf 'WARN_MISSING=%s\n' "$1"; warn=$((warn + 1)); }
 
 printf 'ANDROID_CHECK_BEGIN=1\n'
 
+GODOT_VERSION_TEXT=""
+TPL_VERSION="4.6.1.stable"
 if [[ -n "${GODOT:-}" && -x "$GODOT" ]]; then
+  GODOT_VERSION_TEXT="$("$GODOT" --version 2>/dev/null | head -1)"
+  parsed="${GODOT_VERSION_TEXT%%.official*}"
+  if [[ "$parsed" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[A-Za-z0-9]+)?$ ]]; then
+    TPL_VERSION="$parsed"
+  fi
   report GODOT "$GODOT"
-  report GODOT_VERSION "$("$GODOT" --version 2>/dev/null | head -1)"
+  report GODOT_VERSION "$GODOT_VERSION_TEXT"
 else
   missing "godot executable"
 fi
 
-TPL_DIR="$GODOT_TEMPLATES/4.6.1.stable"
+TPL_DIR="$GODOT_TEMPLATES/$TPL_VERSION"
 if [[ -d "$TPL_DIR" ]]; then
   report ANDROID_TEMPLATES_DIR "$TPL_DIR"
   for template in android_debug.apk android_release.apk; do
@@ -32,6 +39,11 @@ if [[ -d "$TPL_DIR" ]]; then
       missing "export template $TPL_DIR/$template"
     fi
   done
+  if [[ -s "$TPL_DIR/android_source.zip" ]]; then
+    report TEMPLATE_android_source_zip "$TPL_DIR/android_source.zip"
+  else
+    optional_missing "android_source.zip (required only for Gradle/AAB export)"
+  fi
 else
   missing "export templates at $TPL_DIR"
 fi

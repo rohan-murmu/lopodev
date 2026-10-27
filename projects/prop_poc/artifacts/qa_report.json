@@ -3,64 +3,64 @@
     {
       "gate": "asset",
       "status": "PASS",
-      "command": "python3 /media/rohan/D5/MyProjects/automated-game-dev-agent/tools/blender/validate_asset.py /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot/assets/models/sm_crate.glb --min-triangles 50 --max-triangles 2000 --require-material --require-ground-origin --report /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/sm_crate.validate.json ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_asset_20261023T014056Z.log",
+      "command": "python3 <LOCAL_PATH> <LOCAL_PATH> --min-triangles 50 --max-triangles 2000 --require-material --require-ground-origin --report <LOCAL_PATH> ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:40:56+00:00"
     },
     {
       "gate": "asset_anim",
       "status": "PASS",
-      "command": "python3 /media/rohan/D5/MyProjects/automated-game-dev-agent/tools/blender/validate_asset.py /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot/assets/models/sm_gem.glb --require-animation --expect-animation anim_spin --require-skin --require-material --require-ground-origin --report /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/sm_gem.animation.json ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_asset_anim_20261023T014056Z.log",
+      "command": "python3 <LOCAL_PATH> <LOCAL_PATH> --require-animation --expect-animation anim_spin --require-skin --require-material --require-ground-origin --report <LOCAL_PATH> ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:40:56+00:00"
     },
     {
       "gate": "preview_crate",
       "status": "PASS",
-      "command": "/media/rohan/D5/MyProjects/automated-game-dev-agent/tools/blender/run.sh render_preview.py --blend /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/blender/sm_crate.blend --out /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/previews/sm_crate.png --width 640 --height 480 ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_preview_crate_20261023T014056Z.log",
+      "command": "<LOCAL_PATH> render_preview.py --blend <LOCAL_PATH> --out <LOCAL_PATH> --width 640 --height 480 ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:41:01+00:00"
     },
     {
       "gate": "preview_anim",
       "status": "PASS",
-      "command": "/media/rohan/D5/MyProjects/automated-game-dev-agent/tools/blender/run.sh render_preview.py --blend /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/blender/sm_gem.blend --out /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/previews/sm_gem.png --frames 0\\,12\\,24\\,36\\,48 --width 480 --height 360 ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_preview_anim_20261023T014056Z.log",
+      "command": "<LOCAL_PATH> render_preview.py --blend <LOCAL_PATH> --out <LOCAL_PATH> --frames 0\\,12\\,24\\,36\\,48 --width 480 --height 360 ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:41:07+00:00"
     },
     {
       "gate": "content",
       "status": "PASS",
-      "command": "env TARGET_NODE=Prop_Crate TARGET_GLB=res://assets/models/sm_crate.glb /media/rohan/D5/MyProjects/automated-game-dev-agent/tools/godot/validate.sh /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_content_20261023T014056Z.log",
+      "command": "env TARGET_NODE=Prop_Crate TARGET_GLB=res://assets/models/sm_crate.glb <LOCAL_PATH> <LOCAL_PATH> ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:41:12+00:00"
     },
     {
       "gate": "runtime",
       "status": "PASS",
-      "command": "env TARGET_NODE=Prop_Crate EXPECT_ROTATION=1 FRAMES=40 /media/rohan/D5/MyProjects/automated-game-dev-agent/tools/godot/smoke.sh /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_runtime_20261023T014056Z.log",
+      "command": "env TARGET_NODE=Prop_Crate EXPECT_ROTATION=1 FRAMES=40 <LOCAL_PATH> <LOCAL_PATH> ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:41:18+00:00"
     },
     {
       "gate": "visual",
       "status": "PASS",
-      "command": "/media/rohan/D5/MyProjects/automated-game-dev-agent/tools/godot/screenshot.sh /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/screenshots/main_scene.png ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_visual_20261023T014056Z.log",
+      "command": "<LOCAL_PATH> <LOCAL_PATH> <LOCAL_PATH> ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:41:24+00:00"
     },
     {
       "gate": "build",
       "status": "PASS",
-      "command": "/media/rohan/D5/MyProjects/automated-game-dev-agent/tools/godot/export_build.sh /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/godot Linux /media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/build/prop_poc.x86_64 ",
-      "evidence": "/media/rohan/D5/MyProjects/automated-game-dev-agent/projects/prop_poc/artifacts/logs/poc_build_20261023T014056Z.log",
+      "command": "<LOCAL_PATH> <LOCAL_PATH> Linux <LOCAL_PATH> ",
+      "evidence": "<LOCAL_PATH>",
       "details": "exit=0",
       "recorded_at_utc": "2026-10-23T01:41:34+00:00"
     }

@@ -3,12 +3,13 @@
 
 The state file lives inside a game project and records the current gate, human
 approvals and rejections, tasks, assets, tests, issues, and recovery notes. It is
-plain JSON so a new OpenCode session can resume without conversation history.
+plain JSON so a new agent session can resume without conversation history.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -54,6 +55,35 @@ def project_path(project: str) -> Path:
 
 def state_path(project: str) -> Path:
     return project_path(project) / STATE_FILENAME
+
+
+@contextlib.contextmanager
+def state_lock(project: str | Path):
+    """Serialize state read/modify/write operations across CLI and MCP processes."""
+    directory = Path(project).expanduser().resolve()
+    directory.mkdir(parents=True, exist_ok=True)
+    lock_path = directory / ".pipeline_state.lock"
+    with lock_path.open("a+b") as lock_file:
+        if os.name == "nt":
+            import msvcrt
+            lock_file.seek(0)
+            if lock_file.read(1) == b"":
+                lock_file.write(b"0")
+                lock_file.flush()
+            lock_file.seek(0)
+            msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                yield
+            finally:
+                lock_file.seek(0)
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 def gate_index(gate: str) -> int:
@@ -834,6 +864,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        read_only = getattr(args, "command", None) in {
+            "show", "next-task", "list-tasks", "validate",
+        }
+        if getattr(args, "project", None) and not read_only:
+            # Serialize every read/modify/write operation across CLI and MCP.
+            # Readers need no lock because saves replace the JSON atomically.
+            with state_lock(args.project):
+                return args.func(args)
         return args.func(args)
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

@@ -116,7 +116,7 @@ interaction, and performance evidence.
 | 2 | State tasks/readiness and event log | unittest + crystal state validate |
 | 3 | QA report and screenshot blank check | unittest + visual gate |
 | 4 | Adoption and bootstrap | unittest + generated project inspection |
-| 5 | Android capability/export wrappers | capability check + APK probe |
+| 5 | Shared Android APK/AAB export core | capability check + APK/AAB probe |
 | 6 | Remove/avoid legacy orchestration | no global mutation; docs migrated |
 | 7 | Docs and templates | commands match behavior |
 | 8 | Crystal end-to-end regression | content/runtime/gameplay/visual/build |
@@ -143,7 +143,7 @@ interaction, and performance evidence.
 | Bootstrap | layout, links, config, scene, Android preset |
 | Adoption | no source mutation, report/spec/state, validation |
 | Crystal | content, runtime, gameplay, state, visual, build |
-| Android | capability check and debug APK |
+| Android | capability check, debug APK, release AAB, signatures |
 | OpenCode | agent discovery, command discovery, default agent |
 | Delegation | live specialist task and returned evidence |
 

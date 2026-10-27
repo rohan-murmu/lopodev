@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Lightweight LoopDev CLI; resources are resolved relative to this installation.
+set -euo pipefail
+ROOT="${LOOPDEV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+export LOOPDEV_HOME="$ROOT"
+exec python3 "$ROOT/tools/loopdev_cli.py" "$@"

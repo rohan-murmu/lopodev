@@ -1,16 +1,50 @@
-# LopoDev
+# LoopDev (repository: LopoDev)
 
-LopoDev builds playable low-poly 3D games with Blender, Godot 4.x, and native
-OpenCode agents. The lead agent plans first, delegates one bounded task at a
-time, verifies the evidence independently, and stops at explicit human approval
-gates.
+LoopDev is an agent-assisted workflow for building and validating playable 3D
+games with Blender and Godot. Plans, skills, tools, evidence, and approval-gated
+state are kept in files so work can resume across sessions.
 
-No paid runtime dependencies. No separate orchestration server. Just OpenCode
-agents, skills, commands, deterministic tools, and files.
+OpenCode is the reference native integration, with a selectable lead agent,
+specialists, slash commands, and native delegation. Kilo Code has a selectable
+primary plus specialist subagents and shared skills. Cursor has project rules,
+specialist subagents, and shared skills. Other compatible agents can call
+optional project-scoped MCP tools. MCP does not automatically give an agent
+LoopDev orchestration or native specialist delegation.
+
+## Quick start
+
+Requirements: Python 3.12+, Godot for runtime/build checks, and Blender for asset
+authoring. OpenCode, Kilo, Cursor, and the MCP SDK are optional integrations.
+
+```sh
+./bin/loopdev --version
+./bin/loopdev doctor
+./bin/loopdev install opencode --project /path/to/workspace --dry-run
+./bin/loopdev install opencode --project /path/to/workspace
+```
+
+Other project adapters: `loopdev install kilo`, `loopdev install cursor`, or
+`loopdev install mcp`. Installers preserve existing paths, support `--dry-run`,
+and do not modify user-level agent configuration. MCP setup writes a registration
+example which you manually merge into the selected client's MCP settings. Remove
+LoopDev-managed, unchanged files using `loopdev uninstall <target>`.
+
+Existing OpenCode users can keep using `bin/lopodev`, `/init-game`, `/prop`, and
+the other established OpenCode commands.
+
+## Homebrew status
+
+The canonical repository is confirmed as `https://github.com/rohan-murmu/lopodev`
+and the local Git remote points there. No release tag/archive or repository
+`LICENSE` exists yet. Establish the project's license and publish a versioned
+archive before claiming public `brew tap` availability; the formula helper
+computes the checksum from that exact archive. See
+[`docs/installation.md`](docs/installation.md). A formula in this repository
+alone is not a tap.
 
 ## Requirements
 
-- OpenCode 1.18 or later.
+- OpenCode 1.18 or later for the reference native agent experience (optional).
 - Python 3.12+.
 - Blender 5.2 LTS for asset work (not required for an existing Godot project).
 - Godot 4.6.1 with Linux export templates. Android work also needs the Android
@@ -21,7 +55,26 @@ The repository pins Godot under `.tools/godot/`. See
 `docs/environment-audit.md` and `docs/lopodev-audit.md` for this host's actual
 audited capabilities.
 
-## Install the CLI
+## Android export
+
+Check the host, then export a debug APK or a signed release AAB:
+
+```bash
+tools/godot/check_android.sh
+tools/godot/export_android.sh projects/<slug>/godot
+tools/godot/export_android.sh projects/<slug>/godot --release
+tools/godot/export_android.sh projects/<slug>/godot --format aab --release
+```
+
+The same workflow is available as `loopdev android-export` and the optional
+`loopdev_android_export` MCP tool. Release AAB export requires a release
+keystore via `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`,
+`GODOT_ANDROID_KEYSTORE_RELEASE_USER`, and
+`GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD`, plus Godot's Gradle Android template.
+See [`docs/android-export.md`](docs/android-export.md) for signing, verification,
+and the difference between export evidence and device evidence.
+
+## Legacy LopoDev commands
 
 ```bash
 bin/lopodev install-cli
@@ -31,7 +84,10 @@ lopodev version
 This links `lopodev` into `~/.local/bin` without overwriting an existing
 non-symlink. Use `lopodev install-cli /another/bin` to choose the directory.
 
-## Install into a workspace
+The existing `lopodev` launcher remains for backwards compatibility. The new
+multi-platform installer is `loopdev`.
+
+## Legacy OpenCode workspace setup
 
 ```bash
 tools/install_lopodev.sh /path/to/workspace
@@ -79,9 +135,9 @@ python3 tools/adopt_project.py \
 | `optimization` | Measured performance fixes |
 | `qa-release` | Independent QA and release evidence |
 
-The lead delegates through OpenCode's native `task` tool. A specialist gets a
-bounded brief with allowed paths, acceptance commands, evidence requirements,
-and stop conditions.
+OpenCode delegates through its native `task` tool. Kilo and Cursor delegate via
+their own Task/subagent support; tasks stay bounded by shared scopes and evidence
+contracts. MCP clients receive tools, not an implicit LoopDev orchestrator.
 
 ## Commands
 
@@ -140,13 +196,22 @@ projects/<slug>/
 - `docs/lopodev-audit.md` - audited capabilities, evidence, gaps, risks.
 - `docs/lopodev-architecture.md` - agent architecture, state, gates, phases.
 - `docs/agent-orchestration.md` - delegation and resume behavior.
+- `docs/dependency-map.md` - source dependency map and cleanup findings.
+- `docs/integrations.md` - OpenCode, Kilo, Cursor and MCP support levels.
+- `docs/mcp.md` - optional project-scoped MCP server.
+- `docs/android-export.md` - APK/AAB export, signing and verification limits.
+- `docs/installation.md` - CLI, prerequisites and Homebrew release workflow.
+- `docs/development.md` - maintenance/testing notes.
+- `docs/troubleshooting.md` - common setup failures.
+- `tools/sanitize_local_paths.py --check` - check tracked text/artifacts before publishing.
 - `docs/environment-audit.md` - installed toolchain and verified commands.
 - `AGENTS.md` - binding rules for every agent.
 
 ## Known limitations
 
 - Android device, interaction, and performance checks are `NOT RUN` on this host
-  until a device or emulator is connected and inspected.
+  until a device or emulator is connected and inspected. A signed AAB is not
+  Play Console acceptance.
 - iOS is not validated.
 - Blender MCP requires the Blender addon/server to be running. Procedural CLI
   generation works without it.

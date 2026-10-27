@@ -2,7 +2,7 @@
 
 Date: 2026-10-23
 Audit baseline commit: `f2c259f` (`docs: record environment audit and implementation plan`)
-Repository: `/media/rohan/D5/MyProjects/lopodev`
+Repository: this checkout
 
 ## Executive summary
 
@@ -28,11 +28,11 @@ implementation is tracked separately in `docs/lopodev-architecture.md`.
 | Crystal runtime | `SMOKE_TEST=1 TARGET_NODE=Drone EXPECT_MOVEMENT=1 MIN_MOVEMENT_M=1.0 FRAMES=180 tools/godot/smoke.sh ...` | PASS |
 | Crystal gameplay | `"$GODOT" --headless --path ... --script res://tests/gameplay_test.gd` | PASS |
 | Crystal state | `python3 tools/pipeline_state.py validate --project ...` | PASS |
-| Android export | isolated export to `/tmp/opencode/android_probe/probe.apk` | PASS, 27,497,874 bytes |
+| Android export | isolated temporary export (host path redacted) | PASS, 27,497,874 bytes |
 | Android device | `adb devices` | none; daemon connection refused |
 | Blender MCP | `get_addon_status` | addon not running; connection failed |
 
-Crystal baseline logs are under `/tmp/opencode/crystal_*_baseline.log`.
+Crystal baseline logs were stored in a temporary directory (host path redacted).
 Crystal release tar SHA-256:
 `5dff9566a79eeaccd227fc368732b998805f0fcedcbea0da77ac3f01d0da8633`.
 Crystal binary SHA-256:
@@ -67,7 +67,7 @@ Crystal binary SHA-256:
 The working crystal-arena game is outside the repository:
 
 ```text
-/media/rohan/D5/MyProjects/crystal_test/
+`$CRYSTAL_WORKSPACE/`
   AGENTS.md -> repository AGENTS.md
   .gitignore -> repository .gitignore
   templates -> repository templates
@@ -104,7 +104,7 @@ A real debug export was produced during the audit. Two details are critical:
 
 Host facts:
 
-- SDK: `/home/rohan/Android/Sdk`
+- SDK: configured by `ANDROID_SDK_ROOT`
 - JDK: `/usr/lib/jvm/java-17-openjdk-amd64` (`17.0.20`)
 - Debug keystore: `~/.local/share/godot/keystores/debug.keystore`
 - No connected device; `adb` daemon could not be reached.

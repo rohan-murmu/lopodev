@@ -1,12 +1,14 @@
-# AGENTS.md - LopoDev
+# AGENTS.md - LoopDev (LopoDev repository)
 
-LopoDev builds playable low-poly 3D games with Blender, Godot, and an
-OpenCode agent team. The lead plans first, delegates one bounded task at a
-time, verifies independently, and reports only evidence that actually exists.
+LoopDev builds playable 3D games with Blender and Godot. This file defines the
+shared workflow contract: plan first, keep work bounded, verify independently,
+and report only evidence that actually exists. It is independent of an agent
+platform; OpenCode is the reference native adapter.
 
-The default primary agent is `lopodev`. Project-local specialists are
-`game-design`, `modeling`, `animation`, `level-design`, `gameplay`, `ui`,
-`optimization`, and `qa-release`. Slash commands live in `.opencode/commands/`.
+The lead and specialist roles are `lopodev`, `game-design`, `modeling`,
+`animation`, `level-design`, `gameplay`, `ui`, `optimization`, and `qa-release`.
+Agent-specific registration and commands live in platform adapters such as
+`.opencode/`, `.kilo/`, and `.cursor/`.
 
 ## Non-negotiable rules
 
@@ -30,9 +32,9 @@ The default primary agent is `lopodev`. Project-local specialists are
    Do not generate a whole game in one giant script.
 8. **Never approve a human gate on the user's behalf.** A passing command, a
    generated plan, file existence, or silence is not approval.
-9. **Do not build a parallel agent runtime.** LopoDev uses native OpenCode
-   agents, the `task` tool, commands, skills, and files. The Python tools are
-   deterministic helpers, not an orchestration framework.
+9. **Do not build a parallel agent runtime.** Platform adapters use the native
+   agent, delegation, command, and skill features available in that platform.
+   The Python tools are deterministic workflow helpers, not an agent runtime.
 10. **Mobile is separate evidence.** Android export success is not device,
     performance, or iOS proof. Record such checks as `NOT RUN` when they did not
     happen.
@@ -40,13 +42,17 @@ The default primary agent is `lopodev`. Project-local specialists are
 ## Install into a workspace
 
 ```bash
+loopdev install opencode --project /path/to/workspace
+loopdev install kilo --project /path/to/workspace
+loopdev install cursor --project /path/to/workspace
+loopdev install mcp --project /path/to/workspace
 tools/install_lopodev.sh /path/to/workspace
 ```
 
-This links `tools/`, `templates/`, `AGENTS.md`, `.gitignore`, and `.opencode/`
-without overwriting existing files, creates `projects/`, and writes
-`opencode.json` with `default_agent: lopodev`. A new project can also be
-bootstrapped directly:
+`loopdev install` is the multi-platform project adapter installer; it refuses
+existing conflicts and records created files for safe uninstall. The legacy
+`tools/install_lopodev.sh` installs the OpenCode-oriented workspace and never
+overwrites existing files. A new project can also be bootstrapped directly:
 
 ```bash
 python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
@@ -74,7 +80,10 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 | Graphical screenshot | `tools/godot/screenshot.sh <godot_dir> <out.png>` |
 | Linux export | `tools/godot/export_build.sh <godot_dir> [preset] [out]` |
 | Android capability check | `tools/godot/check_android.sh` |
-| Android debug/release APK | `tools/godot/export_android.sh <godot_dir> [--release]` |
+| Android APK export | `tools/godot/android_export.py <godot_dir> --format apk --mode debug` |
+| Android release AAB | `tools/godot/android_export.py <godot_dir> --format aab --mode release` |
+| Compatibility wrapper | `tools/godot/export_android.sh <godot_dir> [--release]` |
+| CLI Android export | `loopdev android-export <godot_dir> --format apk --mode debug` |
 | QA report record/validate | `python3 tools/qa_report.py record ...` / `validate --project projects/<slug>` |
 | Toolkit verification | `tools/verify_lopodev.sh [--crystal <project>] [--full]` |
 | Full PoC | `tools/run_poc.sh` |
@@ -85,20 +94,35 @@ templates `4.6.1.stable`. Blender is the installed 5.2.2 LTS. See
 
 ### Android facts for this host
 
-- SDK: `/home/rohan/Android/Sdk`; JDK 17; debug keystore under
+- Android SDK: configure `ANDROID_SDK_ROOT`; JDK 17; debug keystore under
   `~/.local/share/godot/keystores/`.
 - Android export requires `[rendering]
   textures/vram_compression/import_etc2_astc=true` in `project.godot`.
   Without it texture validation fails even when all other settings are correct.
-- The export script uses an isolated `XDG_CONFIG_HOME`; do not depend on a
+- The export core uses an isolated `XDG_CONFIG_HOME`; do not depend on a
   developer's global editor settings.
-- No Android device was connected during the environment audit. Device and
-  performance gates are therefore `NOT RUN` until a real run occurs.
+- AAB is release-only and requires a Gradle preset: both
+  `gradle_build/use_gradle_build=true` and `gradle_build/export_format=1`. If
+  the project lacks a Gradle build template, the exporter installs it with
+  `--install-android-build-template`, which needs the matching
+  `android_source.zip` template and writes `android/` in the project.
+- Release signing uses `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`,
+  `GODOT_ANDROID_KEYSTORE_RELEASE_USER`, and
+  `GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD`, or Godot's credential/preset
+  fields. Never print, log, or commit the password or keystore.
+- APK export verifies `apksigner` when available; AAB verifies `jarsigner`.
+  Absence of either tool is `NOT RUN`, not a pass.
+- No Android device was connected during the environment audit. Device,
+  interaction, and performance gates are therefore `NOT RUN` until real runs
+  occur. A signed AAB is not Play Console acceptance.
 
 ## Agent team and skill cooperation
 
 The `lopodev` lead routes work; specialists execute bounded tasks and return
-evidence. Skills hold reusable procedures; they are not agents.
+evidence. Each platform adapter uses its own native delegation when available;
+if it lacks delegation, the lead executes one task at a time or asks the user to
+invoke a specialist workflow. Do not simulate unsupported APIs. Skills hold
+reusable procedures; they are not agents.
 
 | Agent | Primary scope | Default skills |
 |---|---|---|
@@ -249,8 +273,9 @@ verifiable. These technical gates are cumulative:
 7. **Build gate** - export a Linux release, verify binary exists, and run the
    exported binary headless for a bounded number of frames with exit code 0.
 8. **Android gate** - when mobile is in scope, check the toolchain, export an
-   APK, verify manifest/signature/size, and run on a device or emulator. If no
-   device exists, record device/interaction/performance as `NOT RUN`.
+   APK (or release AAB where distribution requires it), verify
+   manifest/signature/size, and run on a device or emulator. If no device
+   exists, record device/interaction/performance as `NOT RUN`.
 
 Record each gate as `PASS`, `FAIL`, or `NOT RUN` with command, timestamp, and
 artifact path. A final report must not turn `NOT RUN` into an implied pass.

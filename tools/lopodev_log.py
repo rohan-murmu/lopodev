@@ -35,6 +35,16 @@ def default_log(project: str) -> Path:
     return Path(project).expanduser().resolve() / "artifacts" / "events.jsonl"
 
 
+def append_event(project: str, *, event: str, message: str = "") -> Path:
+    """Append one sanitized event for internal callers such as the MCP adapter."""
+    path = default_log(project)
+    value = sanitize({"ts_utc": utc_now(), "event": event, "message": message})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
+    return path
+
+
 def resolve_log(args: argparse.Namespace) -> Path:
     if args.log:
         return Path(args.log).expanduser().resolve()

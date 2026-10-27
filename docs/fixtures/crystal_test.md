@@ -3,7 +3,7 @@
 The fixture is intentionally outside this repository:
 
 ```text
-/media/rohan/D5/MyProjects/crystal_test/
+$CRYSTAL_WORKSPACE/
 ```
 
 It is a real, playable Godot game used to prove that toolkit changes do not
@@ -35,18 +35,20 @@ crystal_test/projects/crystal_test/
 ## Verification
 
 ```bash
-tools/verify_lopodev.sh \
-  --crystal /media/rohan/D5/MyProjects/crystal_test/projects/crystal_test
+CRYSTAL_WORKSPACE=/path/to/crystal_test
 
 tools/verify_lopodev.sh \
-  --crystal /media/rohan/D5/MyProjects/crystal_test/projects/crystal_test --full
+  --crystal "$CRYSTAL_WORKSPACE/projects/crystal_test"
+
+tools/verify_lopodev.sh \
+  --crystal "$CRYSTAL_WORKSPACE/projects/crystal_test" --full
 ```
 
 The full run checks state, event-log compatibility, content, runtime movement,
 gameplay assertions, and a graphical screenshot. The build gate is separate:
 
 ```bash
-cd /media/rohan/D5/MyProjects/crystal_test
+cd "$CRYSTAL_WORKSPACE"
 tools/godot/export_build.sh projects/crystal_test/godot Linux \
   projects/crystal_test/build/crystal_test.x86_64
 ```
