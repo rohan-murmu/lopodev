@@ -120,22 +120,6 @@ class AdapterTests(unittest.TestCase):
         manifest = lopodev_cli.load_manifest(self.workspace)
         self.assertEqual(manifest["files"]["AGENTS.md"]["owners"], ["kilo"])
 
-    def test_uninstall_reads_legacy_loopdev_manifest(self) -> None:
-        source = self.workspace / ".cursor/agents/legacy.md"
-        source.parent.mkdir(parents=True)
-        source.write_text("legacy managed file")
-        digest = hashlib.sha256(source.read_bytes()).hexdigest()
-        legacy = self.workspace / ".loopdev/managed-files.json"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_text(json.dumps({"schema_version": 1, "files": {
-            ".cursor/agents/legacy.md": {"target": "cursor", "owners": ["cursor"],
-                                         "kind": "file", "sha256": digest}}}))
-        messages = lopodev_cli.uninstall_target(self.workspace, "cursor", False)
-        self.assertTrue(any("REMOVED" in item for item in messages))
-        self.assertFalse(source.exists())
-        self.assertFalse(legacy.exists())
-        self.assertFalse((self.workspace / ".lopodev").exists())
-
     @unittest.skipUnless(shutil.which("kilo"), "Kilo CLI is not installed")
     def test_kilo_cli_discovers_installed_native_agents(self) -> None:
         lopodev_cli.install_kilo(lopodev_cli.toolkit_root(), self.workspace, False)

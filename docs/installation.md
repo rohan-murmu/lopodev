@@ -35,8 +35,8 @@ does not install software or change system settings.
 The generated OpenCode config keeps Blender MCP disabled until the user enables
 it; this avoids making the addon/server an installation prerequisite.
 
-`bin/lopodev` is the CLI. `bin/loopdev` and `tools/install_lopodev.sh` remain as
-deprecated compatibility shims for one release. On Windows, invoke the CLI with
+`bin/lopodev` is the CLI. `tools/install_lopodev.sh` remains as a deprecated
+compatibility wrapper. On Windows, invoke the CLI with
 `python tools/lopodev_cli.py` until a native Windows launcher is supplied.
 
 ## Homebrew status and release workflow

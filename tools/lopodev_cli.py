@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 def toolkit_root() -> Path:
-    configured = os.environ.get("LOPODEV_HOME") or os.environ.get("LOOPDEV_HOME")
+    configured = os.environ.get("LOPODEV_HOME")
     if configured:
         return Path(configured).expanduser().resolve()
     return Path(__file__).resolve().parent.parent
@@ -103,17 +103,8 @@ def manifest_path(workspace: Path) -> Path:
     return workspace / ".lopodev/managed-files.json"
 
 
-def manifest_read_path(workspace: Path) -> Path:
-    """Prefer the current manifest, falling back to the legacy loopdev location."""
-    current = manifest_path(workspace)
-    legacy = workspace / ".loopdev/managed-files.json"
-    if not current.exists() and legacy.is_file():
-        return legacy
-    return current
-
-
 def load_manifest(workspace: Path) -> dict:
-    path = manifest_read_path(workspace)
+    path = manifest_path(workspace)
     safe_destination(workspace, path)
     if path.is_symlink():
         raise ValueError(f"refusing to use symlinked ownership manifest: {path}")
@@ -200,8 +191,7 @@ def prune_empty_dirs(workspace: Path, relative_dirs: tuple[str, ...]) -> None:
 
 
 def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
-    path = manifest_read_path(workspace)
-    write_path = manifest_path(workspace)
+    path = manifest_path(workspace)
     safe_destination(workspace, path)
     if path.is_symlink():
         raise ValueError(f"refusing to use symlinked ownership manifest: {path}")
@@ -242,16 +232,13 @@ def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
     if not dry_run:
         manifest["files"] = remaining
         if remaining:
-            write_path.parent.mkdir(parents=True, exist_ok=True)
-            write_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        elif write_path.exists():
-            write_path.unlink()
-        legacy = workspace / ".loopdev/managed-files.json"
-        if path != write_path and legacy.exists():
-            legacy.unlink()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        elif path.exists():
+            path.unlink()
         prune_empty_dirs(workspace, (".opencode/skills", ".opencode", ".kilo/agents", ".kilo/skills", ".kilo",
                                      ".cursor/rules", ".cursor/agents", ".cursor",
-                                     ".agents/skills", ".agents", ".lopodev", ".loopdev"))
+                                     ".agents/skills", ".agents", ".lopodev"))
     return messages
 
 

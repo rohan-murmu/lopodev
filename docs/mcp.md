@@ -11,9 +11,6 @@ The optional local stdio server exposes bounded project workflow operations:
 - `lopodev_android_export`: validate and export a Godot Android APK or release
   AAB through the shared deterministic exporter.
 
-The former `loopdev_*` tool names are registered as deprecated aliases for one
-release; new clients should use `lopodev_*`.
-
 It does not expose arbitrary shell/filesystem access, approve gates, publish, or
 deploy. The Android export tool is the one explicit operation that invokes Godot;
 it is scoped to the project `godot_dir` and rejects output paths outside the

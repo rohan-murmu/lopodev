@@ -29,8 +29,7 @@ and do not modify user-level agent configuration. MCP setup writes a registratio
 example which you manually merge into the selected client's MCP settings. Remove
 LopoDev-managed, unchanged files using `lopodev uninstall <target>`.
 
-`bin/lopodev` is the only launcher. A deprecated `bin/loopdev` shim remains for
-one release. After install, OpenCode discovers `.opencode/agents`,
+`bin/lopodev` is the only launcher. After install, OpenCode discovers `.opencode/agents`,
 `.opencode/commands`, and `.opencode/skills`; Kilo and Cursor share
 `resources/skills` through `.agents/skills`.
 

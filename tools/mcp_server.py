@@ -250,39 +250,6 @@ def main() -> int:
             code = -32602 if exc.exit_code == 2 else -32603
             raise MCPError(code, str(exc)) from exc
 
-
-    @server.tool()
-    def loopdev_status(slug: str) -> dict:
-        """Deprecated alias for lopodev_status."""
-        return lopodev_status(slug)
-
-    @server.tool()
-    def loopdev_next(slug: str) -> dict:
-        """Deprecated alias for lopodev_next."""
-        return lopodev_next(slug)
-
-    @server.tool()
-    def loopdev_validate(slug: str) -> dict:
-        """Deprecated alias for lopodev_validate."""
-        return lopodev_validate(slug)
-
-    @server.tool()
-    def loopdev_context(slug: str) -> dict:
-        """Deprecated alias for lopodev_context."""
-        return lopodev_context(slug)
-
-    @server.tool()
-    def loopdev_checkpoint(slug: str, note: str) -> dict:
-        """Deprecated alias for lopodev_checkpoint."""
-        return lopodev_checkpoint(slug, note)
-
-    @server.tool()
-    def loopdev_android_export(slug: str, format: str = "apk", mode: str = "debug",
-                               preset: str = "Android", output: str = "",
-                               godot: str = "") -> dict:
-        """Deprecated alias for lopodev_android_export."""
-        return lopodev_android_export(slug, format, mode, preset, output, godot)
-
     server.run(transport="stdio")
     return 0
 

@@ -52,7 +52,7 @@ class ExportError(RuntimeError):
 
 
 def toolkit_root() -> Path:
-    configured = os.environ.get("LOPODEV_HOME") or os.environ.get("LOOPDEV_HOME")
+    configured = os.environ.get("LOPODEV_HOME")
     if configured:
         return Path(configured).expanduser().resolve()
     return Path(__file__).resolve().parents[2]

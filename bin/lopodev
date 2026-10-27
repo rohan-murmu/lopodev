@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Lightweight LopoDev CLI; resources are resolved relative to this installation.
 set -euo pipefail
-ROOT="${LOPODEV_HOME:-${LOOPDEV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}}"
+ROOT="${LOPODEV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
 export LOPODEV_HOME="$ROOT"
 exec python3 "$ROOT/tools/lopodev_cli.py" "$@"
