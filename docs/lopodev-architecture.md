@@ -88,7 +88,8 @@ gate test is `FAIL`.
 
 - One JSON object per line with UTC timestamp and event name.
 - Optional agent, gate, task, status, command, evidence, message, and data.
-- Secret-like keys are redacted and values over 2,000 characters truncated.
+- Secret-like keys and embedded `key=value`/`Authorization:` credentials are
+  redacted; values over 2,000 characters are truncated.
 - `append`, `tail`, `summary`, and `validate` subcommands.
 
 `projects/<slug>/artifacts/qa_report.json`:

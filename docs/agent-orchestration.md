@@ -99,7 +99,8 @@ python3 tools/lopodev_log.py summary --project projects/<slug>
 python3 tools/lopodev_log.py validate --project projects/<slug>
 ```
 
-Secret-like keys are redacted; long values are truncated. The log is evidence
+Secret-like keys and embedded credential assignments are redacted; long values
+are truncated. The log is evidence
 for recovery and retrospectives, not a replacement for `pipeline_state.json`.
 
 ## Resume protocol

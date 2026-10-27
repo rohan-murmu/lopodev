@@ -20,6 +20,11 @@ SECRET_KEY_RE = re.compile(
     r"(token|secret|password|passwd|api[_-]?key|authorization|credential|private[_-]?key)",
     re.IGNORECASE,
 )
+SECRET_ASSIGN_RE = re.compile(
+    r"(?P<key>[\w.-]*(?:token|secret|password|passwd|api[_-]?key|authorization|credential|private[_-]?key)[\w.-]*\s*[:=]\s*)"
+    r"(?P<value>(?:bearer\s+)?(?:\"[^\"]*\"|'[^']*'|[^\s,;\"']+))",
+    re.IGNORECASE,
+)
 MAX_VALUE_CHARS = 2000
 EVENT_FIELDS = {
     "event", "agent", "gate", "task", "status", "command", "evidence",
@@ -60,8 +65,11 @@ def sanitize(value, key: str = ""):
         return {str(k): sanitize(v, str(k)) for k, v in value.items()}
     if isinstance(value, list):
         return [sanitize(item, key) for item in value]
-    if isinstance(value, str) and len(value) > MAX_VALUE_CHARS:
-        return value[:MAX_VALUE_CHARS] + f"... <truncated {len(value) - MAX_VALUE_CHARS} chars>"
+    if isinstance(value, str):
+        value = SECRET_ASSIGN_RE.sub(
+            lambda match: match.group("key") + "<redacted>", value)
+        if len(value) > MAX_VALUE_CHARS:
+            return value[:MAX_VALUE_CHARS] + f"... <truncated {len(value) - MAX_VALUE_CHARS} chars>"
     return value
 
 

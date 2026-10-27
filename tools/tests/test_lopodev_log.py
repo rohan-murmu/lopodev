@@ -36,7 +36,8 @@ class EventLogTests(unittest.TestCase):
             log.cmd_append,
             log=None, project=str(self.project), event="delegation",
             agent="modeling", gate="B", task="T1", status="started",
-            command="tool --token hunter2", evidence="", message="start",
+            command="tool --token hunter2", evidence="",
+            message="api_key=sk-test-secret Authorization: Bearer abc123",
             data=["api_key=secret", "note=visible"], json_data=None,
         )
         self.assertEqual(code, 0, output)
@@ -45,6 +46,9 @@ class EventLogTests(unittest.TestCase):
         self.assertEqual(event["event"], "delegation")
         self.assertEqual(event["data"]["api_key"], "<redacted>")
         self.assertEqual(event["data"]["note"], "visible")
+        self.assertNotIn("sk-test-secret", event["message"])
+        self.assertNotIn("abc123", event["message"])
+        self.assertIn("<redacted>", event["message"])
         self.assertTrue(event["ts_utc"].endswith("+00:00"))
 
     def test_validate_accepts_appended_events(self) -> None:
