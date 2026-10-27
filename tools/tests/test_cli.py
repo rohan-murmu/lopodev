@@ -19,6 +19,16 @@ class LopoDevCliTests(unittest.TestCase):
         self.assertIn(f"lopodev {(ROOT / 'VERSION').read_text().strip()}", result.stdout)
         self.assertIn(f"root={ROOT}", result.stdout)
 
+    def test_new_forwards_bootstrap_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "ws"
+            result = self.run_cli("new", "--workspace", str(workspace),
+                                  "--slug", "demo", "--title", "Demo")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("PROJECT_BOOTSTRAPPED=", result.stdout)
+            self.assertTrue((workspace / "projects/demo/project.json").is_file())
+            self.assertTrue((workspace / ".opencode/agents/lopodev.md").is_file())
+
     def test_install_cli_creates_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             bin_dir = Path(temp) / "bin"
