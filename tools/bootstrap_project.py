@@ -59,6 +59,9 @@ def project_json(slug: str, title: str, godot_version: str,
                  blender_version: str) -> dict:
     return {
         "schema_version": 1,
+        # design_version 2 requires core_loop, screens, navigation and (for
+        # touch games) controls; the draft fails validation until planned.
+        "design_version": 2,
         "slug": slug,
         "title": title,
         "summary": "Draft specification created by bootstrap_project.py; the game-planner skill must fill it before gate A.",
@@ -103,6 +106,7 @@ config_version=5
 
 config/name={json.dumps(title)}
 config/description="Created by LopoDev."
+config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "GL Compatibility")
 run/main_scene="res://scenes/Main.tscn"
 
@@ -110,7 +114,7 @@ run/main_scene="res://scenes/Main.tscn"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/handheld/orientation=1
+window/handheld/orientation=0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
@@ -195,6 +199,43 @@ package/unique_name="com.lopodev.{slug}"
 package/name="{slug}"
 package/signed=true
 texture_format/etc2_astc=true
+
+[preset.2]
+
+name="Android AAB"
+platform="Android"
+runnable=false
+advanced_options=false
+dedicated_server=false
+custom_features=""
+export_filter="all_resources"
+include_filter=""
+exclude_filter=""
+export_path="build/{slug}.aab"
+patches=PackedStringArray()
+encryption_include_filters=""
+encryption_exclude_filters=""
+seed=0
+encrypt_pck=false
+encrypt_directory=false
+script_export_mode=2
+
+[preset.2.options]
+
+custom_template/debug=""
+custom_template/release=""
+gradle_build/use_gradle_build=true
+gradle_build/export_format=1
+architectures/armeabi-v7a=true
+architectures/arm64-v8a=true
+architectures/x86=false
+architectures/x86_64=false
+version/code=1
+version/name="1.0"
+package/unique_name="com.lopodev.{slug}"
+package/name="{slug}"
+package/signed=true
+texture_format/etc2_astc=true
 """
 
 
@@ -221,26 +262,6 @@ offset_right = 640.0
 offset_bottom = 80.0
 text = "LopoDev scaffold - complete the plan before building"
 """
-
-
-def opencode_config() -> str:
-    return json.dumps({
-        "$schema": "https://opencode.ai/config.json",
-        "default_agent": "lopodev",
-        "mcp": {
-            "blender": {
-                "type": "local",
-                "command": ["uvx", "mcp-for-blender"],
-                "enabled": True,
-                "environment": {
-                    "BLENDER_HOST": "localhost",
-                    "BLENDER_PORT": "9876",
-                    "DISABLE_TELEMETRY": "true",
-                },
-                "timeout": 60000,
-            }
-        },
-    }, indent=2) + "\n"
 
 
 def main() -> int:
@@ -347,9 +368,10 @@ def main() -> int:
                          created, skipped, warnings)
         scaffold_symlink(workspace, ".gitignore", TOOLKIT_ROOT / ".gitignore",
                          created, skipped, warnings)
-        write_if_absent(workspace / "opencode.json", opencode_config(),
-                        created, skipped)
-        for message in cli.install_opencode(TOOLKIT_ROOT, workspace, dry_run=False):
+        # opencode.json is owned by the installer so uninstall can undo it.
+        messages = cli.install_opencode(TOOLKIT_ROOT, workspace, dry_run=False)
+        cli.record_created(workspace, "opencode", messages)
+        for message in messages:
             if message.startswith(("PRESERVED", "UNCHANGED", "ALREADY_PRESENT")):
                 skipped.append(message)
             else:

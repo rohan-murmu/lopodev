@@ -1,0 +1,30 @@
+$ python3 "$LOPODEV_HOME/tools/knowledge_godot_check.py" --base "$LOPODEV_KNOWLEDGE_BASE" --kit artifacts/godot-screen-router --test checks/test_screen_router.gd
+exit=0
+--- stdout
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+ok: starts at main menu
+ok: back at home is unhandled (caller may quit)
+ok: back from settings returns home
+ok: settings screen removed
+ok: menu -> game leaves exactly one screen
+ok: restart re-instances game once
+ok: transition releases held actions
+ok: pause overlay pauses tree
+ok: overlay keeps processing while paused
+ok: back closes pause and resumes
+ok: back in gameplay opens pause instead of leaving
+ok: focus loss in gameplay auto-pauses
+ok: repeated focus loss does not stack pause overlays
+ok: screen change clears overlays and unpauses
+ok: no stale game/pause nodes after game over
+ok: exactly one screen node in the tree
+ok: focus loss outside gameplay does not pause
+ok: Android back from game over returns home
+ok: Android back in gameplay opens pause
+KNOWLEDGE_CHECK=PASS failures=0
+
+GODOT=$LOPODEV_HOME/.tools/godot/Godot_v4.6.1-stable_linux.x86_64
+KNOWLEDGE_GODOT_CHECK=PASS exit=0
+
+--- stderr

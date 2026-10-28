@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "seed": 1337,
+  "bounds": {"min": [-30, -30], "max": [30, 30]},
+  "cell_size": 0.5,
+  "player_radius": 0.4,
+  "spawn_clearance": 3.0,
+  "objective_clearance": 1.0,
+  "art_direction": "Stylized forest clearing at dusk; warm path, cool foliage; landmark tower visible from spawn.",
+  "spawns": [{"id": "player_spawn", "pos": [0, -24]}],
+  "objectives": [
+    {"id": "crystal_1", "pos": [-14, 4], "radius": 0.5},
+    {"id": "crystal_2", "pos": [16, 10], "radius": 0.5},
+    {"id": "exit_gate", "pos": [0, 25], "radius": 1.5}
+  ],
+  "landmarks": [{"id": "watch_tower", "pos": [7, 15], "radius": 3.0, "asset": "sm_tower"}],
+  "paths": [
+    {"id": "main_path", "points": [[0, -24], [0, 8], [0, 25]], "width": 3.0},
+    {"id": "west_branch", "points": [[0, -4], [-14, 4]], "width": 2.0},
+    {"id": "east_branch", "points": [[0, 2], [16, 10]], "width": 2.0}
+  ],
+  "obstacles": [
+    {"id": "house_1", "asset": "sm_cottage", "pos": [-8, -14], "radius": 3.5, "rotation": 15, "collision": "static"}
+  ],
+  "blockers": [],
+  "scatter": [
+    {"asset": "sm_tree", "count": 60, "radius": 0.7, "min_spacing": 1.2,
+     "cluster": {"centers": 5, "spread": 5.0}, "scale_range": [0.85, 1.25], "collision": "static"},
+    {"asset": "sm_rock", "count": 25, "radius": 0.5, "min_spacing": 0.8, "scale_range": [0.7, 1.4], "collision": "static"},
+    {"asset": "sm_grass", "count": 120, "radius": 0.2, "min_spacing": 0.2, "collision": "none",
+     "avoid": ["spawns", "objectives"]}
+  ],
+  "budgets": {"max_instances": 260, "max_per_asset": 150, "max_same_asset_within_5m": 14}
+}

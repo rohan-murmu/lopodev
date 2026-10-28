@@ -9,16 +9,24 @@ import json
 import os
 import platform
 import shutil
-import socket
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import approval  # noqa: E402
+import integrations  # noqa: E402
+import workspace_config  # noqa: E402
 
 
 def toolkit_root() -> Path:
     configured = os.environ.get("LOPODEV_HOME")
     if configured:
-        return Path(configured).expanduser().resolve()
+        # Keep the configured spelling: Homebrew passes its stable opt/ path,
+        # and resolving it would pin workspace links to a versioned Cellar dir
+        # that disappears after `brew upgrade` + `brew cleanup`.
+        return Path(os.path.abspath(Path(configured).expanduser()))
     return Path(__file__).resolve().parent.parent
 
 
@@ -199,6 +207,14 @@ def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
         return [f"NOT_INSTALLED {target}: no LopoDev ownership manifest at {path}"]
     manifest = load_manifest(workspace)
     messages: list[str] = []
+    if target == "opencode":
+        messages.extend(workspace_config.unmerge(workspace, "opencode.json", manifest, dry_run))
+        config_file = workspace / "opencode.json"
+        leftover = workspace_config.load_config(config_file)
+        if (not dry_run and leftover is not None and set(leftover) <= {"$schema"}
+                and "opencode.json" not in manifest["files"]):
+            config_file.unlink()
+            messages.append(f"REMOVED {config_file}")
     remaining = dict(manifest["files"])
     for relative, entry in list(manifest["files"].items()):
         if not managed_path_allowed(target, relative):
@@ -231,15 +247,80 @@ def uninstall_target(workspace: Path, target: str, dry_run: bool) -> list[str]:
             remaining.pop(relative, None)
     if not dry_run:
         manifest["files"] = remaining
-        if remaining:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        if remaining or manifest.get("config_keys"):
+            save_manifest(workspace, manifest)
         elif path.exists():
             path.unlink()
         prune_empty_dirs(workspace, (".opencode/skills", ".opencode", ".kilo/agents", ".kilo/skills", ".kilo",
                                      ".cursor/rules", ".cursor/agents", ".cursor",
                                      ".agents/skills", ".agents", ".lopodev"))
     return messages
+
+
+def skill_sources(root: Path) -> list[Path]:
+    """LopoDev's own skills plus vendored skills that `lopodev setup` installed."""
+    own = [skill for skill in sorted((root / "resources/skills").iterdir())
+           if skill.is_dir() and (skill / "SKILL.md").is_file()]
+    names = {skill.name for skill in own}
+    vendored_root = integrations.data_dir() / "skills"
+    vendored = [vendored_root / name for name in integrations.vendored_skills(root)
+                if name not in names and (vendored_root / name / "SKILL.md").is_file()]
+    return own + vendored
+
+
+def launcher_path(root: Path) -> str:
+    """Stable launcher for MCP commands: the path the user invoked, not a Cellar path."""
+    return os.environ.get("LOPODEV_LAUNCHER") or str(root / "bin/lopodev")
+
+
+# Values earlier LopoDev releases wrote into opencode.json without recording
+# ownership; reinstalling migrates them instead of reporting a conflict.
+LEGACY_OPENCODE_VALUES = {
+    "mcp.blender": [
+        {"type": "local", "command": ["uvx", "mcp-for-blender"], "enabled": enabled,
+         "environment": {"BLENDER_HOST": "localhost", "BLENDER_PORT": "9876",
+                         "DISABLE_TELEMETRY": "true"}, "timeout": 60000}
+        for enabled in (True, False)
+    ],
+}
+
+
+def opencode_desired_config(root: Path, workspace: Path) -> dict:
+    desired = {"default_agent": "lopodev", "instructions": ["AGENTS.md"],
+               "permission": approval.policy(approval.current_mode(workspace))}
+    try:
+        existing = (workspace_config.load_config(workspace / "opencode.json") or {}).get("mcp", {})
+    except ValueError:
+        existing = {}
+    for name, entry in integrations.opencode_mcp_block(root, launcher_path(root)).items():
+        # Keep whichever lopodev launcher spelling the workspace already uses
+        # (`lopodev` on PATH vs an absolute path); both run the same server.
+        command = (existing.get(name) or {}).get("command") or []
+        if (len(command) == 3 and command[1:] == ["mcp-run", name]
+                and Path(command[0]).name == "lopodev"):
+            entry = dict(entry, command=list(command))
+        desired[f"mcp.{name}"] = entry
+    for pattern, enabled in integrations.opencode_tool_defaults(root).items():
+        desired[f"tools.{pattern}"] = enabled
+    return desired
+
+
+def configure_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
+    manifest = load_manifest(workspace)
+    messages = workspace_config.merge(
+        workspace, "opencode.json", opencode_desired_config(root, workspace), manifest, dry_run,
+        skeleton={"$schema": "https://opencode.ai/config.json"}, legacy=LEGACY_OPENCODE_VALUES)
+    if not dry_run:
+        save_manifest(workspace, manifest)
+    return messages
+
+
+def save_manifest(workspace: Path, manifest: dict) -> None:
+    path = manifest_path(workspace)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
@@ -254,17 +335,10 @@ def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
                   "commands": root / "adapters/opencode/commands"}
     for destination in components.values():
         preflight_symlink(destination, opencode / destination.name, workspace)
-    skills = [skill for skill in sorted((root / "resources/skills").iterdir())
-              if skill.is_dir() and (skill / "SKILL.md").is_file()]
+    skills = skill_sources(root)
     for skill in skills:
         preflight_symlink(skill, opencode / "skills" / skill.name, workspace)
-    config = workspace / "opencode.json"
-    existing_config = None
-    if config.exists():
-        try:
-            existing_config = json.loads(config.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise ValueError(f"cannot safely inspect {config}: {exc}") from exc
+    workspace_config.load_config(workspace / "opencode.json")  # fail early on invalid JSON
     if not (workspace / "AGENTS.md").exists() and not (workspace / "AGENTS.md").is_symlink():
         preflight_file(root / "AGENTS.md", workspace / "AGENTS.md", workspace)
     for name in ("tools", "templates"):
@@ -284,41 +358,13 @@ def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
         messages.append(_install_symlink(skill, skills_dir / skill.name, dry_run))
 
     messages.extend(install_shared_contract(root, workspace, dry_run, include_skills=False))
-
-    if existing_config is not None:
-        if existing_config.get("default_agent") == "lopodev":
-            messages.append(f"UNCHANGED {config} (default_agent=lopodev)")
-        else:
-            messages.append(f"PRESERVED {config}; add default_agent=lopodev manually if desired")
-    else:
-        if not dry_run:
-            payload = {
-                "$schema": "https://opencode.ai/config.json",
-                "default_agent": "lopodev",
-                "instructions": ["AGENTS.md"],
-                "mcp": {
-                    "blender": {
-                        "type": "local",
-                        "command": ["uvx", "mcp-for-blender"],
-                        "enabled": False,
-                        "environment": {
-                            "BLENDER_HOST": "localhost",
-                            "BLENDER_PORT": "9876",
-                            "DISABLE_TELEMETRY": "true",
-                        },
-                        "timeout": 60000,
-                    }
-                },
-            }
-            config.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        messages.append(f"{'WOULD_WRITE' if dry_run else 'WROTE'} {config}")
+    messages.extend(configure_opencode(root, workspace, dry_run))
     return messages
 
 
 def install_kilo(root: Path, workspace: Path, dry_run: bool) -> list[str]:
     agents = sorted((root / "adapters/kilo/agents").glob("*.md"))
-    skills = [skill for skill in sorted((root / "resources/skills").iterdir())
-              if skill.is_dir() and (skill / "SKILL.md").is_file()]
+    skills = skill_sources(root)
     for agent in agents:
         preflight_file(agent, workspace / ".kilo/agents" / agent.name, workspace)
     for skill in skills:
@@ -343,10 +389,9 @@ def install_shared_contract(root: Path, workspace: Path, dry_run: bool,
     for name in ("tools", "templates"):
         messages.append(_install_symlink(root / name, workspace / name, dry_run))
     if include_skills:
-        for skill in sorted((root / "resources/skills").iterdir()):
-            if skill.is_dir() and (skill / "SKILL.md").is_file():
-                messages.append(_install_symlink(skill, workspace / ".agents/skills" / skill.name,
-                                                 dry_run))
+        for skill in skill_sources(root):
+            messages.append(_install_symlink(skill, workspace / ".agents/skills" / skill.name,
+                                             dry_run))
     return messages
 
 
@@ -357,9 +402,8 @@ def preflight_shared_contract(root: Path, workspace: Path, include_skills: bool 
     for name in ("tools", "templates"):
         preflight_symlink(root / name, workspace / name, workspace)
     if include_skills:
-        for skill in sorted((root / "resources/skills").iterdir()):
-            if skill.is_dir() and (skill / "SKILL.md").is_file():
-                preflight_symlink(skill, workspace / ".agents/skills" / skill.name, workspace)
+        for skill in skill_sources(root):
+            preflight_symlink(skill, workspace / ".agents/skills" / skill.name, workspace)
 
 
 def install_cursor(root: Path, workspace: Path, dry_run: bool) -> list[str]:
@@ -413,6 +457,8 @@ def android_export_command(args) -> int:
         argv.append("--dry-run")
     if args.json:
         argv.append("--json")
+    if args.install_run:
+        argv.append("--install-run")
     return android_export.main(argv)
 
 
@@ -448,7 +494,7 @@ def open_command(args) -> int:
     return 0
 
 
-def doctor(root: Path, workspace: Path) -> int:
+def doctor(root: Path, workspace: Path, live: bool = True, probe: bool = False) -> int:
     print(f"LopoDev {read_version(root)}")
     print(f"CLI Python: {sys.executable} ({platform.python_version()})")
     resources_ok = (root / 'tools').is_dir() and (root / 'resources/skills').is_dir() and (root / 'adapters').is_dir()
@@ -496,17 +542,36 @@ def doctor(root: Path, workspace: Path) -> int:
         print("MCP SDK: not installed (optional; install with `pip install 'mcp>=2,<3'`)")
     else:
         print("MCP SDK: available")
-    if shutil.which("uvx"):
-        host = os.environ.get("BLENDER_HOST", "localhost")
-        try:
-            port = int(os.environ.get("BLENDER_PORT", "9876"))
-            with socket.create_connection((host, port), timeout=0.5):
-                print(f"Blender MCP endpoint: reachable at {host}:{port}")
-        except (OSError, ValueError):
-            print(f"Blender MCP endpoint: not reachable at {host}:{os.environ.get('BLENDER_PORT', '9876')} (optional; enable Blender addon server to use it)")
-    else:
-        print("Blender MCP launcher: uvx not found (optional)")
+    print(f"approval mode: {approval.current_mode(workspace)} (change with `lopodev approval auto|manual`)")
+    print(f"user data: {integrations.data_dir()} (knowledge, pinned integrations; kept on upgrade/uninstall)")
+    has_opencode_workspace = (workspace / "opencode.json").is_file()
+    rows = integrations.status(root, workspace if has_opencode_workspace else None, live=live)
+    if probe:
+        import mcp_probe
+        for server in mcp_probe.READ_ONLY_CALLS:
+            try:
+                result = mcp_probe.probe(root, server, workspace)
+                rows.append((f"mcp {server} tool call", result["status"],
+                             f"{result.get('call')}: {result.get('detail', '')[:120]}"))
+            except (FileNotFoundError, KeyError) as exc:
+                rows.append((f"mcp {server} tool call", "NOT RUN", str(exc)))
+    failures = 0
+    print("== integrations ==")
+    for check, result, detail in rows:
+        print(f"{result:8} {check}: {detail}")
+        failures += result == "FAIL"
+    if failures:
+        print(f"DOCTOR=FAIL failures={failures}")
+        print("RECOVERY: `lopodev setup` installs pinned integrations; `lopodev install opencode "
+              "--project <workspace>` wires them into a workspace; then start a new OpenCode session.")
+        return 1
+    print("DOCTOR=PASS")
     return 0
+
+
+def integrations_disabled(argv: list[str]) -> bool:
+    """`--no-integrations` or LOPODEV_NO_INTEGRATIONS=1 (offline/CI) skip `setup`."""
+    return "--no-integrations" in argv or os.environ.get("LOPODEV_NO_INTEGRATIONS") == "1"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -514,12 +579,36 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version",
                         version=f"lopodev {read_version(toolkit_root())}")
     sub = parser.add_subparsers(dest="command")
-    sub.add_parser("doctor", help="check tools, adapters and optional dependencies")
+    doctor_parser = sub.add_parser("doctor", help="check tools, integrations, skills and MCP activation")
+    doctor_parser.add_argument("--project", default=".", help="workspace root (default: current directory)")
+    doctor_parser.add_argument("--no-live", action="store_true",
+                               help="skip launching opencode to probe skill discovery and MCP connectivity")
+    doctor_parser.add_argument("--probe", action="store_true",
+                               help="also make one real read-only tool call to each MCP server")
     install = sub.add_parser("install", help="install a project-level agent adapter")
     install.add_argument("target", choices=("opencode", "kilo", "cursor", "mcp"))
     install.add_argument("--project", default=".", help="workspace root (default: current directory)")
     install.add_argument("--dry-run", action="store_true")
     install.add_argument("--python", help="Python executable with MCP SDK installed (MCP target only)")
+    install.add_argument("--no-integrations", action="store_true",
+                         help="do not install pinned MCP servers and vendored skills first")
+    setup_parser = sub.add_parser("setup", help="install pinned MCP servers and vendored skills (per user)")
+    setup_parser.add_argument("--dry-run", action="store_true")
+    setup_parser.add_argument("--only", action="append", choices=("skills", "blender", "godot", "codemap"),
+                              help="limit to a component (repeatable)")
+    setup_parser.add_argument("--no-blender-addon", action="store_true",
+                              help="do not copy/enable the Blender MCP addon in Blender's user preferences")
+    mcp_run = sub.add_parser("mcp-run", help="launch a pinned MCP server (used by agent configs)")
+    mcp_run.add_argument("server")
+    mcp_run.add_argument("server_args", nargs=argparse.REMAINDER)
+    approval_parser = sub.add_parser("approval", help="show or set the tool approval mode")
+    approval_parser.add_argument("mode", nargs="?", choices=approval.MODES)
+    approval_parser.add_argument("--project", default=".", help="workspace root (default: current directory)")
+    for name, help_text in (("knowledge", "search, verify and reuse engineering knowledge"),
+                            ("context", "print a bounded task brief for an agent session"),
+                            ("world", "generate and validate procedural world plans")):
+        passthrough = sub.add_parser(name, help=help_text)
+        passthrough.add_argument("passthrough_args", nargs=argparse.REMAINDER)
     uninstall = sub.add_parser("uninstall", help="remove only unchanged files recorded as LopoDev-managed")
     uninstall.add_argument("target", choices=("opencode", "kilo", "cursor", "mcp"))
     uninstall.add_argument("--project", default=".", help="workspace root (default: current directory)")
@@ -539,6 +628,8 @@ def main(argv: list[str] | None = None) -> int:
     android.add_argument("--dry-run", action="store_true",
                          help="validate the request without exporting")
     android.add_argument("--json", action="store_true", help="print a JSON result")
+    android.add_argument("--install-run", action="store_true",
+                         help="install and launch the APK on a connected device/emulator")
     open_parser = sub.add_parser("open", help="start OpenCode with the lopodev agent")
     open_parser.add_argument("opencode_args", nargs=argparse.REMAINDER)
     cli = sub.add_parser("install-cli", help="symlink this launcher onto PATH")
@@ -552,16 +643,35 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     root = toolkit_root()
     if argv and argv[0] == "new":
+        bootstrap_args = [arg for arg in argv[1:] if arg != "--no-integrations"]
+        if not integrations_disabled(argv):
+            messages, errors = integrations.setup(root)
+            for message in messages:
+                print(message)
+            if errors:
+                print(f"INTEGRATIONS=DEGRADED ({len(errors)} failed); the project is still created. "
+                      "Run `lopodev doctor` for recovery steps.")
         return subprocess.call([sys.executable, str(root / "tools/bootstrap_project.py"),
-                                *argv[1:]])
+                                *bootstrap_args])
     if argv and argv[0] == "verify":
         return subprocess.call([str(root / "tools/verify_lopodev.sh"), *argv[1:]])
+    passthrough = {"knowledge": "knowledge.py", "context": "context_pack.py", "world": "world_plan.py"}
+    if argv and argv[0] in passthrough:
+        return subprocess.call([sys.executable, str(root / "tools" / passthrough[argv[0]]), *argv[1:]])
+    if argv and argv[0] == "mcp-run":
+        if len(argv) < 2:
+            parser.error("mcp-run needs a server name")
+        return integrations.mcp_run(root, argv[1], argv[2:])
     args = parser.parse_args(argv)
     if args.command in (None, "help"):
         parser.print_help()
         return 0
     if args.command == "doctor":
-        return doctor(root, project_root(None))
+        return doctor(root, project_root(args.project), live=not args.no_live, probe=args.probe)
+    if args.command == "setup":
+        return setup_command(root, args)
+    if args.command == "approval":
+        return approval_command(root, project_root(args.project), args.mode)
     if args.command == "version":
         print(f"lopodev {read_version(root)}")
         print(f"root={root}")
@@ -591,6 +701,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     installers = {"opencode": install_opencode, "kilo": install_kilo,
                   "cursor": install_cursor, "mcp": install_mcp}
+    degraded: list[str] = []
+    if args.target != "mcp" and not integrations_disabled(argv):
+        setup_messages, degraded = integrations.setup(root, dry_run=args.dry_run)
+        for message in setup_messages:
+            print(message)
     try:
         # Fail closed before changing paths if ownership metadata is corrupt or
         # points outside the selected workspace.
@@ -607,6 +722,56 @@ def main(argv: list[str] | None = None) -> int:
     for message in messages:
         print(message)
     print(f"INSTALL_TARGET={args.target} DRY_RUN={str(args.dry_run).lower()}")
+    if degraded:
+        print(f"INTEGRATIONS=DEGRADED ({len(degraded)} failed); run `lopodev doctor` for recovery steps")
+    if args.target == "opencode" and not args.dry_run:
+        print("ACTIVATION: new OpenCode sessions in this workspace load the changes. Running sessions "
+              "keep their old tools until restarted; LopoDev never restarts them for you. "
+              f"Verify with `lopodev doctor --project {workspace}`.")
+    return 0
+
+
+def setup_command(root: Path, args) -> int:
+    messages, errors = integrations.setup(root, dry_run=args.dry_run,
+                                          components=set(args.only) if args.only else None,
+                                          blender_addon=not args.no_blender_addon)
+    for message in messages:
+        print(message)
+    print(f"SETUP={'FAIL' if errors else 'PASS'} DRY_RUN={str(args.dry_run).lower()}")
+    for error in errors:
+        print(f"RECOVERY {error.split(':', 1)[0]}: fix the cause above, then rerun `lopodev setup`",
+              file=sys.stderr)
+    return 1 if errors else 0
+
+
+def approval_command(root: Path, workspace: Path, mode: str | None) -> int:
+    current = approval.current_mode(workspace)
+    if mode is None:
+        print(f"APPROVAL_MODE={current}")
+        print("auto: edits and ordinary commands run without prompts; destructive, publishing and "
+              "gate-approval commands still ask" if current == "auto" else
+              "manual: every edit and non-read-only command asks first")
+        return 0
+    if not workspace.is_dir():
+        print(f"ERROR: workspace does not exist: {workspace}", file=sys.stderr)
+        return 2
+    try:
+        manifest = load_manifest(workspace)
+        messages = workspace_config.merge(workspace, "opencode.json",
+                                          {"permission": approval.policy(mode)}, manifest, False,
+                                          skeleton={"$schema": "https://opencode.ai/config.json"})
+        if any(message.startswith("PRESERVED") for message in messages):
+            for message in messages:
+                print(message)
+            print("ERROR: opencode.json has a user-defined `permission` block; LopoDev will not "
+                  "replace it. Remove it to let LopoDev manage approval mode.", file=sys.stderr)
+            return 2
+        save_manifest(workspace, manifest)
+        approval.record_mode(workspace, mode, current, "lopodev approval")
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    print(f"APPROVAL_MODE={mode} (was {current}); restart running OpenCode sessions to apply")
     return 0
 
 

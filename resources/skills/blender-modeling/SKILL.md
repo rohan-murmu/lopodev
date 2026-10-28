@@ -69,6 +69,34 @@ report. No asset is considered done until an independent validator passes.
    result to `game-world`. If animation is required, hand off to
    `blender-animation` before level integration.
 
+## Art quality: silhouette first, reference driven
+
+A valid mesh is not an acceptable model. Work in passes and look at every pass:
+
+1. **Brief**: from the spec or reference image, write down silhouette, proportions
+   (real-world meters), 3-5 color palette, material zones and the 3 details that
+   make the object recognizable (a cottage: roof tiles, timber frame, stone base,
+   panelled door with hinges). Record these as visual acceptance criteria.
+2. **Primary forms**: block the silhouette with correct proportions only. Render
+   `--views front,right,top,three_quarter` and compare against the brief.
+3. **Secondary forms**: bevels on visible edges, overhangs, insets, layered
+   pieces (trim, frames, supports). Every triangle must change the silhouette or
+   a material boundary; flat shading needs deliberate edge breaks.
+4. **Tertiary detail and material**: palette materials (or one atlas), value
+   contrast between zones, a little hue variation across repeats.
+5. **Review**: render the views again with
+   `python3 tools/blender/render_preview.py --blend <file> --out <png> --views front,right,top,three_quarter`
+   and inspect them yourself. Fix proportion errors, floating parts, missing
+   brief details and muddy palettes before exporting. With a reference image,
+   load `concept-target-visual-gate` and keep a short mismatch ledger; never lower
+   the target to declare success.
+
+For low-poly technique load `blender-lpm-skill` (export through LopoDev's GLB
+pipeline, not its FBX path). For modular kits keep a shared grid (1 m or 2 m),
+pivots at ground contact, and consistent trim heights so pieces snap.
+Live inspection through Blender MCP (`look`, `viewport_capture`) is welcome; the
+saved generator script remains the source of truth.
+
 ## Validation procedures
 
 - Generation gate: generator exit 0; `.blend`, `.glb`, `.meta.json` exist and

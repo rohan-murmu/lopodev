@@ -9,6 +9,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hermetic  # noqa: E402,F401  (no downloads, isolated user data)
+
 TOOLKIT = Path(__file__).resolve().parents[2]
 ADOPT = TOOLKIT / "tools" / "adopt_project.py"
 VALIDATE = TOOLKIT / "tools" / "validate_spec.py"

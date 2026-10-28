@@ -1,7 +1,12 @@
+import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hermetic  # noqa: E402,F401  (no downloads, isolated user data)
 
 ROOT = Path(__file__).resolve().parents[2]
 CLI = ROOT / "bin" / "lopodev"
@@ -46,6 +51,31 @@ class LopoDevCliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("not a symlink", result.stderr)
             self.assertEqual(target.read_text(), "user file")
+
+    def test_symlinked_launcher_resolves_toolkit_root(self) -> None:
+        # Regression: a ~/.local/bin symlink made the launcher look for
+        # tools/ next to the symlink instead of in the toolkit checkout.
+        with tempfile.TemporaryDirectory() as temp:
+            link = Path(temp) / "bin" / "lopodev"
+            link.parent.mkdir()
+            link.symlink_to(CLI)
+            env = {key: value for key, value in os.environ.items() if key != "LOPODEV_HOME"}
+            result = subprocess.run([str(link), "version"], text=True,
+                                    capture_output=True, check=False, cwd=temp, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"root={ROOT.resolve()}", result.stdout)
+
+    def test_configured_home_is_not_resolved_through_symlinks(self) -> None:
+        # Homebrew sets LOPODEV_HOME to its stable opt/ symlink; resolving it
+        # would pin workspaces to a versioned Cellar path.
+        with tempfile.TemporaryDirectory() as temp:
+            opt = Path(temp) / "opt"
+            opt.symlink_to(ROOT, target_is_directory=True)
+            env = dict(os.environ, LOPODEV_HOME=str(opt))
+            result = subprocess.run([str(CLI), "version"], text=True,
+                                    capture_output=True, check=False, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"root={opt}", result.stdout)
 
 
 if __name__ == "__main__":

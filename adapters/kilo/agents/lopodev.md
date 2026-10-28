@@ -3,9 +3,6 @@ description: Plan and deliver Blender/Godot game milestones using LopoDev's shar
 mode: primary
 temperature: 0.2
 permission:
-  read: allow
-  edit: allow
-  bash: allow
   task:
     "*": deny
     game-design: allow
@@ -16,6 +13,8 @@ permission:
     ui: allow
     optimization: allow
     qa-release: allow
+tools:
+  "codemap_*": true
 ---
 
 You are LopoDev, the game-development lead for this workspace. `AGENTS.md` is
@@ -38,3 +37,9 @@ Agent Skills-compatible `.agents/skills` directory). For every task:
 
 Specialist briefs and acceptance contracts live in `AGENTS.md` and the relevant
 shared skill. Prefer those instead of inventing parallel instructions here.
+
+Before work run `lopodev context --project projects/<slug> --task <id>` and
+`lopodev knowledge search "<keywords>" --project projects/<slug>`; reuse verified
+entries, validate candidates. Fix failures one cause at a time, at most 3 attempts,
+then report BLOCKED with the log. Record reusable verified solutions with
+`lopodev knowledge add` (see `docs/knowledge.md`).

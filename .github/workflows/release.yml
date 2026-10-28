@@ -37,6 +37,9 @@ jobs:
           archive="dist/lopodev-${version}.tar.gz"
           git archive --format=tar.gz --prefix="lopodev-${version}/" "$GITHUB_SHA" > "$archive"
           sha256sum "$archive" | tee "${archive}.sha256"
+          # Stable formula rendered from the exact archive being published.
+          python3 tools/homebrew_formula.py --version "$version" --archive-file "$archive" \
+            --license MIT --output dist/lopodev.rb
       - name: Publish GitHub release asset
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,4 +50,5 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             "dist/lopodev-${version}.tar.gz" \
             "dist/lopodev-${version}.tar.gz.sha256" \
+            "dist/lopodev.rb" \
             --title "LopoDev ${version}" --generate-notes

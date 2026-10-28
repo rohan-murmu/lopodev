@@ -69,6 +69,30 @@ layout. It does not write gameplay systems beyond minimal scene setup.
 10. Record scene paths, transforms, camera parameters, and evidence for
     `godot-gameplay` and `game-qa`.
 
+## World plan first
+
+Never scatter props directly into a scene. Plan, resolve, validate, then assemble:
+
+1. Copy `templates/world_plan.json` to `projects/<slug>/docs/world_plan.json` and
+   fill bounds, spawns, objectives, landmarks (with `asset` when solid), paths,
+   authored obstacles, `blockers` (walls/water) and scatter rules. Use clusters
+   for vegetation, `region` to keep rocks on slopes or edges, `avoid` to keep
+   paths, spawns and objectives clear, and budgets for instances and repetition.
+2. `lopodev world generate docs/world_plan.json --out docs/world_plan.resolved.json`
+   (deterministic from `seed`; change the seed, not the code, to vary layouts).
+3. `lopodev world validate docs/world_plan.resolved.json --report artifacts/world_plan.report.json --map`
+   must PASS: inside bounds, no collidable overlaps, spawn and path clearance,
+   every objective reachable, budgets, complete scatter. Read the ASCII map.
+4. `python3 tools/godot/world_to_tscn.py docs/world_plan.resolved.json --godot-dir godot --out scenes/World.tscn`
+   instances GLBs and creates `Markers/Spawn_*`, `Markers/Objective_*` for gameplay.
+   Missing assets fail; generate them first instead of using placeholders.
+5. In Godot, verify vertical placement (no floating/sunken props), collision
+   shapes on `static` props, and a screenshot from the player's spawn.
+
+Distinguish `collision`: `static` (blocks movement), `destructible`, `none`
+(decor such as grass). Interactables belong in `objectives` or landmarks with
+`interactive: true` so reachability covers them.
+
 ## Validation procedures
 
 - Import gate: headless import exit 0 with no project-caused errors.

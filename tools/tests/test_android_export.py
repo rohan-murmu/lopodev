@@ -9,9 +9,13 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hermetic  # noqa: E402,F401  (no downloads, isolated user data)
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools/godot"))
@@ -88,6 +92,13 @@ class FakeRunner:
         self.create_artifact = create_artifact
         self.signature_rc = signature_rc
         self.signature_text = signature_text
+        self.badging = ("package: name='com.lopodev.fixture' versionCode='1' versionName='1.0'\n"
+                        "sdkVersion:'24'\ntargetSdkVersion:'35'\n"
+                        "launchable-activity: name='com.godot.game.GodotApp'\n")
+        self.xmltree = ""
+        self.devices = "List of devices attached\n\n"
+        self.pid = ""
+        self.logcat = ""
         self.commands: list[list[str]] = []
 
     def __call__(self, command, **kwargs):
@@ -111,10 +122,33 @@ class FakeRunner:
             if stdout:
                 stdout.write(self.signature_text)
             return SimpleNamespace(returncode=self.signature_rc, stdout="", stderr="")
+        if "xmltree" in command:
+            if stdout:
+                stdout.write(self.xmltree)
+            return SimpleNamespace(returncode=0, stdout=None, stderr=None)
+        if "badging" in command:
+            if stdout:
+                stdout.write(self.badging)
+            return SimpleNamespace(returncode=0, stdout=None, stderr=None)
+        if command[-1] == "devices":
+            return SimpleNamespace(returncode=0, stdout=self.devices, stderr="")
+        if "install" in command:
+            return SimpleNamespace(returncode=0, stdout="Performing Streamed Install\nSuccess\n", stderr="")
+        if "pidof" in command:
+            return SimpleNamespace(returncode=0 if self.pid else 1, stdout=self.pid, stderr="")
+        if "-d" in command and "logcat" in command:
+            return SimpleNamespace(returncode=0, stdout=self.logcat, stderr="")
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
 
 class AndroidExportTests(unittest.TestCase):
+    def make_sdk(self) -> None:
+        for relative in ("Android/Sdk/build-tools/35.0.1/aapt2", "Android/Sdk/platform-tools/adb"):
+            tool = self.root / relative
+            tool.parent.mkdir(parents=True, exist_ok=True)
+            tool.write_text("#!/bin/sh\n", encoding="utf-8")
+            tool.chmod(0o755)
+
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
@@ -153,6 +187,79 @@ class AndroidExportTests(unittest.TestCase):
         }
         values.update(overrides)
         return android_export.export_project(**values)
+
+    def test_apk_metadata_is_read_and_checked_against_preset(self) -> None:
+        self.make_sdk()
+        result = self.export()
+        self.assertEqual(result["manifest"]["status"], "PASS")
+        self.assertEqual(result["manifest"]["package"], "com.lopodev.fixture")
+        self.assertEqual(result["manifest"]["target_sdk"], "35")
+        self.assertTrue(Path(result["report"]).is_file())
+        self.assertEqual(result["device_gate"], "NOT RUN")
+
+    def test_launcher_activity_alias_is_found_in_manifest_tree(self) -> None:
+        # Godot 4.6 launches through <activity-alias>; badging omits it.
+        self.make_sdk()
+        runner = FakeRunner()
+        runner.badging = runner.badging.replace(
+            "launchable-activity: name='com.godot.game.GodotApp'\n", "other-activities\n")
+        runner.xmltree = ('E: activity-alias (line=48)\n'
+                          'A: http://schemas.android.com/apk/res/android:name(0x01010003)='
+                          '"com.godot.game.GodotAppLauncher" (Raw: "x")\n'
+                          'A: http://schemas.android.com/apk/res/android:name(0x01010003)='
+                          '"android.intent.category.LAUNCHER" (Raw: "x")\n')
+        result = self.export(runner=runner)
+        self.assertEqual(result["manifest"]["launchable_activity"], "com.godot.game.GodotAppLauncher")
+        runner = FakeRunner()
+        runner.badging = runner.badging.replace(
+            "launchable-activity: name='com.godot.game.GodotApp'\n", "")
+        with self.assertRaisesRegex(android_export.ExportError, "no launchable activity"):
+            self.export(runner=runner)
+
+    def test_aab_default_preset_prefers_gradle_bundle_preset(self) -> None:
+        presets = android_export.parse_config(
+            '[preset.0]\nname="Android"\nplatform="Android"\n[preset.0.options]\n'
+            'gradle_build/use_gradle_build=false\n'
+            '[preset.1]\nname="Android AAB"\nplatform="Android"\n[preset.1.options]\n'
+            'gradle_build/use_gradle_build=true\ngradle_build/export_format=1\n')
+        self.assertEqual(android_export.default_preset_name(presets, "aab", "Android"), "Android AAB")
+        self.assertEqual(android_export.default_preset_name(presets, "apk", "Android"), "Android")
+        self.assertEqual(android_export.default_preset_name(presets, "aab", "Custom"), "Custom")
+
+    def test_apk_package_mismatch_fails_the_gate(self) -> None:
+        self.make_sdk()
+        runner = FakeRunner()
+        runner.badging = runner.badging.replace("com.lopodev.fixture", "com.other.game")
+        with self.assertRaisesRegex(android_export.ExportError, "package 'com.other.game'"):
+            self.export(runner=runner)
+
+    def test_missing_aapt2_is_not_run_not_pass(self) -> None:
+        result = self.export()
+        self.assertEqual(result["manifest"]["status"], "NOT RUN")
+
+    def test_device_gate_without_device_is_not_run(self) -> None:
+        self.make_sdk()
+        result = self.export(install_run=True)
+        self.assertEqual(result["device_gate"], "NOT RUN")
+        self.assertIn("no Android device", result["device"]["reason"])
+        self.assertEqual(result["status"], "PASS")
+
+    def test_device_gate_installs_launches_and_checks_process(self) -> None:
+        self.make_sdk()
+        runner = FakeRunner()
+        runner.devices = "List of devices attached\nemulator-5554\tdevice\n"
+        runner.pid = "4242\n"
+        with mock.patch.object(android_export.time, "sleep"):
+            result = self.export(runner=runner, install_run=True)
+        self.assertEqual(result["device_gate"], "PASS")
+        self.assertTrue(any("monkey" in command for command in runner.commands))
+        runner = FakeRunner()
+        runner.devices = "List of devices attached\nemulator-5554\tdevice\n"
+        runner.logcat = "FATAL EXCEPTION: main\nProcess: com.lopodev.fixture, PID: 1\n"
+        with mock.patch.object(android_export.time, "sleep"):
+            result = self.export(runner=runner, install_run=True)
+        self.assertEqual(result["device_gate"], "FAIL")
+        self.assertEqual(result["status"], "FAIL")
 
     def test_parse_preset_and_reject_non_android(self) -> None:
         presets = android_export.parse_config(APK_PRESET)

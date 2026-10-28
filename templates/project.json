@@ -1,11 +1,13 @@
 {
   "schema_version": 1,
+  "design_version": 2,
   "slug": "example_game",
   "title": "Example Game",
   "summary": "One sentence describing the player fantasy and the first vertical slice.",
   "status": "in_progress",
   "genre": "third-person action",
-  "target_platform": "linux-x86_64",
+  "core_loop": "Run through the level, collect the prop objectives while avoiding hazards, then reach the exit before the timer ends.",
+  "target_platform": "android",
   "engine": {
     "name": "godot",
     "version": "4.6.1",
@@ -51,6 +53,19 @@
       "verify": "TARGET_NODE=Prop tools/godot/validate.sh projects/example_game/godot",
       "status": "planned",
       "owner": "level-design"
+    },
+    {
+      "id": "T3",
+      "title": "Plan and validate the world layout",
+      "skills": [
+        "game-world"
+      ],
+      "depends_on": [
+        "T1"
+      ],
+      "verify": "python3 tools/world_plan.py validate projects/example_game/docs/world_plan.json",
+      "status": "planned",
+      "owner": "level-design"
     }
   ],
   "acceptance": [
@@ -67,6 +82,18 @@
       "evidence": "projects/example_game/artifacts/screenshots/main.png"
     },
     {
+      "id": "A3",
+      "criterion": "Every objective is reachable from the player spawn and no collidable props overlap.",
+      "gate": "content",
+      "evidence": "projects/example_game/artifacts/world_plan.report.json"
+    },
+    {
+      "id": "A4",
+      "criterion": "Main menu -> game -> pause -> resume/restart/menu and victory/game over -> retry/menu all work, verified by a runtime navigation test.",
+      "gate": "runtime",
+      "evidence": "projects/example_game/artifacts/logs/navigation_test.log"
+    },
+    {
       "id": "A5",
       "criterion": "When mobile is in scope, the Android APK contains a manifest and device/performance checks are either run or recorded NOT RUN.",
       "gate": "android",
@@ -75,9 +102,10 @@
   ],
   "known_limitations": [],
   "platforms": {
-    "primary": "linux-x86_64",
+    "primary": "android",
     "mobile": "android",
-    "ios": "unverified-path"
+    "ios": "unverified-path",
+    "desktop_dev": "linux-x86_64"
   },
   "mobile": {
     "orientation": "landscape",
@@ -88,5 +116,174 @@
       "triangles_visible": 60000,
       "texture_max_px": 2048
     }
-  }
+  },
+  "controls": {
+    "scheme": "virtual-joystick+look+buttons",
+    "keyboard_fallback": true,
+    "touch": [
+      {
+        "id": "move_stick",
+        "type": "joystick",
+        "action": "move",
+        "zone": "bottom-left"
+      },
+      {
+        "id": "look",
+        "type": "look-drag",
+        "action": "camera_look",
+        "zone": "right"
+      },
+      {
+        "id": "jump",
+        "type": "button",
+        "action": "jump",
+        "zone": "bottom-right",
+        "min_size_dp": 64
+      },
+      {
+        "id": "pause_button",
+        "type": "button",
+        "action": "pause",
+        "zone": "top-right",
+        "min_size_dp": 48
+      }
+    ],
+    "knowledge": [
+      "godot-mobile-touch-controls",
+      "godot-safe-area"
+    ]
+  },
+  "screens": [
+    {
+      "id": "main_menu",
+      "kind": "menu",
+      "scene": "res://scenes/ui/MainMenu.tscn",
+      "controls": [
+        "play",
+        "settings",
+        "quit"
+      ]
+    },
+    {
+      "id": "settings",
+      "kind": "settings",
+      "scene": "res://scenes/ui/Settings.tscn",
+      "controls": [
+        "back"
+      ]
+    },
+    {
+      "id": "game",
+      "kind": "gameplay",
+      "scene": "res://scenes/Main.tscn",
+      "controls": [
+        "pause_button"
+      ]
+    },
+    {
+      "id": "pause",
+      "kind": "overlay",
+      "scene": "res://scenes/ui/Pause.tscn",
+      "controls": [
+        "resume",
+        "restart",
+        "menu"
+      ]
+    },
+    {
+      "id": "victory",
+      "kind": "result",
+      "scene": "res://scenes/ui/Victory.tscn",
+      "controls": [
+        "retry",
+        "menu"
+      ]
+    },
+    {
+      "id": "game_over",
+      "kind": "result",
+      "scene": "res://scenes/ui/GameOver.tscn",
+      "controls": [
+        "retry",
+        "menu"
+      ]
+    }
+  ],
+  "navigation": {
+    "entry": "main_menu",
+    "router": "godot-screen-router",
+    "transitions": [
+      {
+        "from": "main_menu",
+        "on": "play",
+        "to": "game"
+      },
+      {
+        "from": "main_menu",
+        "on": "settings",
+        "to": "settings"
+      },
+      {
+        "from": "main_menu",
+        "on": "quit",
+        "to": "@quit"
+      },
+      {
+        "from": "settings",
+        "on": "back",
+        "to": "@back"
+      },
+      {
+        "from": "game",
+        "on": "pause_button",
+        "to": "pause"
+      },
+      {
+        "from": "game",
+        "on": "all_objectives_collected",
+        "to": "victory"
+      },
+      {
+        "from": "game",
+        "on": "player_died",
+        "to": "game_over"
+      },
+      {
+        "from": "pause",
+        "on": "resume",
+        "to": "@back"
+      },
+      {
+        "from": "pause",
+        "on": "restart",
+        "to": "game"
+      },
+      {
+        "from": "pause",
+        "on": "menu",
+        "to": "main_menu"
+      },
+      {
+        "from": "victory",
+        "on": "retry",
+        "to": "game"
+      },
+      {
+        "from": "victory",
+        "on": "menu",
+        "to": "main_menu"
+      },
+      {
+        "from": "game_over",
+        "on": "retry",
+        "to": "game"
+      },
+      {
+        "from": "game_over",
+        "on": "menu",
+        "to": "main_menu"
+      }
+    ]
+  },
+  "world_plan": "projects/example_game/docs/world_plan.json"
 }

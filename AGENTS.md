@@ -69,6 +69,14 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 | Install LopoDev into a workspace | `bin/lopodev install opencode --project <workspace>` |
 | Create a project workspace | `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"` |
 | Adopt an existing Godot project | `python3 tools/adopt_project.py --godot-dir <dir> --project projects/<slug> --slug <slug> --title "<title>"` |
+| Install pinned MCP servers + skills (per user) | `lopodev setup` |
+| Diagnose install, skills, MCP activation | `lopodev doctor --project <workspace> [--probe]` |
+| Task brief (bounded context) | `lopodev context --project projects/<slug> [--task <id>]` |
+| Reusable knowledge | `lopodev knowledge search\|show\|apply\|add\|verify\|promote\|fail` |
+| World plan generate/validate | `lopodev world generate\|validate <plan.json>` |
+| World plan -> Godot scene | `python3 tools/godot/world_to_tscn.py <resolved.json> --godot-dir <dir> --out scenes/World.tscn` |
+| Tool approval mode | `lopodev approval [auto\|manual]` |
+| Multi-view asset preview | `tools/blender/run.sh tools/blender/render_preview.py --blend <f> --out <png> --views front,right,top,three_quarter` |
 | Show/resume project state | `python3 tools/pipeline_state.py show --project projects/<slug>` |
 | Next task / all tasks | `python3 tools/pipeline_state.py next-task --project projects/<slug>` |
 | Load pinned paths | `source tools/env.sh` |
@@ -86,7 +94,7 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 | Android APK export | `tools/godot/android_export.py <godot_dir> --format apk --mode debug` |
 | Android release AAB | `tools/godot/android_export.py <godot_dir> --format aab --mode release` |
 | Compatibility wrapper | `tools/godot/export_android.sh <godot_dir> [--release]` |
-| CLI Android export | `lopodev android-export <godot_dir> --format apk --mode debug` |
+| CLI Android export | `lopodev android-export <godot_dir> --format apk --mode debug [--install-run]` |
 | QA report record/validate | `python3 tools/qa_report.py record ...` / `validate --project projects/<slug>` |
 | Toolkit verification | `tools/verify_lopodev.sh [--crystal <project>] [--full]` |
 | Full PoC | `tools/run_poc.sh` |
@@ -158,6 +166,20 @@ Run skills in this order, skipping only with a recorded reason:
    graphical/export evidence, test report, known limitations.
 
 Handoffs are file-based. A skill must not rely on conversation-only state.
+
+### Working loop for every task
+
+1. `lopodev context --project projects/<slug> --task <id>` for the brief; open
+   the files it names only when needed.
+2. `lopodev knowledge search "<keywords>"` before implementing. Reuse `verified`
+   entries, validate `candidate` ones, ignore hidden `failed`/`deprecated` ones.
+3. Use only the MCP tools enabled for your agent (Blender MCP, Godot MCP, Code
+   Map). MCP output is observation; gate evidence comes from the commands above.
+   Never claim an MCP call you did not make.
+4. Verify, fix one cause, re-verify: at most 3 attempts or until the same error
+   repeats, then record the issue and report BLOCKED.
+5. Record reusable verified solutions with `lopodev knowledge add` + `verify
+   --run`; game-specific decisions stay in project memory. No secrets.
 If an upstream artifact is missing or invalid, stop and repair it; do not
 silently substitute placeholder geometry.
 

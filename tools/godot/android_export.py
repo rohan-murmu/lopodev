@@ -126,6 +126,19 @@ def read_credentials(godot_dir: Path) -> dict[int, dict]:
             for entry in presets}
 
 
+def default_preset_name(presets: list[dict], export_format: str, requested: str) -> str:
+    """For AAB with the default name, prefer a Gradle AAB preset when one exists."""
+    if export_format != "aab" or requested != DEFAULT_PRESET:
+        return requested
+    for preset in presets:
+        options = preset.get("options", {})
+        if (unquote(preset["main"].get("platform", "")).lower() == "android"
+                and truthy(options.get("gradle_build/use_gradle_build"))
+                and unquote(options.get("gradle_build/export_format", "0")) == "1"):
+            return unquote(preset["main"].get("name", ""))
+    return requested
+
+
 def find_preset(presets: list[dict], name: str) -> dict:
     for entry in presets:
         if unquote(entry["main"].get("name", "")) == name:
@@ -223,8 +236,11 @@ def resolve_godot(explicit: str | None = None, root: Path | None = None) -> str:
 
 
 def android_sdk(env: dict) -> Path:
+    # Honor the HOME in `env` (not the process home) so callers and tests
+    # that pass an isolated environment get an isolated SDK lookup.
+    home = Path(env.get("HOME") or Path.home())
     return Path(env.get("ANDROID_HOME") or env.get("ANDROID_SDK_ROOT") or
-                Path.home() / "Android/Sdk").expanduser()
+                home / "Android/Sdk").expanduser()
 
 
 def java_home(env: dict) -> Path | None:
@@ -265,6 +281,114 @@ def find_apksigner(env: dict) -> str | None:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
     return None
+
+
+def find_build_tool(env: dict, name: str) -> str | None:
+    """Newest executable `name` under the SDK build-tools, or None."""
+    build_tools = android_sdk(env) / "build-tools"
+    if not build_tools.is_dir():
+        return None
+    for version in sorted((p for p in build_tools.iterdir() if p.is_dir()),
+                          key=lambda p: [int(x) if x.isdigit() else 0 for x in p.name.split(".")],
+                          reverse=True):
+        candidate = version / name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def find_adb(env: dict) -> str | None:
+    candidate = android_sdk(env) / "platform-tools/adb"
+    if candidate.is_file() and os.access(candidate, os.X_OK):
+        return str(candidate)
+    return shutil.which("adb")
+
+
+BADGING_PATTERNS = {
+    "package": re.compile(r"package: name='([^']+)'"),
+    "version_code": re.compile(r"versionCode='([^']*)'"),
+    "version_name": re.compile(r"versionName='([^']*)'"),
+    "min_sdk": re.compile(r"(?:minSdkVersion|sdkVersion):'(\d+)'"),
+    "target_sdk": re.compile(r"targetSdkVersion:'(\d+)'"),
+    "launchable_activity": re.compile(r"launchable-activity: name='([^']+)'"),
+}
+
+
+def apk_metadata(apk: Path, expected: dict, env: dict, log_path: Path,
+                 runner=subprocess.run) -> dict:
+    """Read the packaged manifest with aapt2 and compare it with the preset."""
+    aapt2 = find_build_tool(env, "aapt2")
+    if not aapt2:
+        return {"status": "NOT RUN", "reason": "aapt2 not found in Android SDK build-tools"}
+    result = run_logged([aapt2, "dump", "badging", str(apk)], log_path, env, 120, runner)
+    if result.returncode != 0:
+        return {"status": "FAIL", "reason": f"aapt2 exit {result.returncode}", "log": str(log_path)}
+    # run_logged streams output into the log file; parse that, not stdout.
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    found = {key: (match.group(1) if (match := pattern.search(text)) else "")
+             for key, pattern in BADGING_PATTERNS.items()}
+    if not found["launchable_activity"]:
+        # Godot 4.6 launches through an <activity-alias>, which `badging` does
+        # not report; find the LAUNCHER category in the manifest tree instead.
+        tree_log = log_path.with_name(log_path.stem + "_manifest.log")
+        tree = run_logged([aapt2, "dump", "xmltree", "--file", "AndroidManifest.xml", str(apk)],
+                          tree_log, env, 120, runner)
+        text = tree_log.read_text(encoding="utf-8", errors="replace") if tree_log.is_file() else ""
+        if tree.returncode == 0 and "android.intent.category.LAUNCHER" in text:
+            names = re.findall(r'android:name\(0x01010003\)="([^"]+)"', text.split(
+                "android.intent.category.LAUNCHER")[0])
+            components = [name for name in names if "." in name and not name.startswith("android.")]
+            found["launchable_activity"] = components[-1] if components else "LAUNCHER"
+    problems = []
+    if expected.get("package_name") and found["package"] != expected["package_name"]:
+        problems.append(f"package {found['package']!r} != preset {expected['package_name']!r}")
+    if expected.get("version_code") and found["version_code"] != expected["version_code"]:
+        problems.append(f"versionCode {found['version_code']!r} != preset {expected['version_code']!r}")
+    if not found["launchable_activity"]:
+        problems.append("no launchable activity")
+    return {"status": "FAIL" if problems else "PASS", "problems": problems, **found,
+            "log": str(log_path)}
+
+
+def device_gate(apk: Path, package: str, env: dict, log_path: Path,
+                runner=subprocess.run, settle_seconds: float = 6.0,
+                sleep=time.sleep) -> dict:
+    """Install, launch and confirm the process is alive on a connected device."""
+    adb = find_adb(env)
+    if not adb:
+        return {"status": "NOT RUN", "reason": "adb not found"}
+    listed = runner([adb, "devices"], capture_output=True, text=True, timeout=30, check=False)
+    devices = [line.split()[0] for line in (listed.stdout or "").splitlines()[1:]
+               if line.strip().endswith("device")]
+    if not devices:
+        return {"status": "NOT RUN", "reason": "no Android device or emulator connected (`adb devices`)"}
+    serial = env.get("ANDROID_SERIAL") or devices[0]
+    base = [adb, "-s", serial]
+    steps = [("install", [*base, "install", "-r", str(apk)], 300),
+             ("clear_log", [*base, "logcat", "-c"], 30),
+             ("launch", [*base, "shell", "monkey", "-p", package, "-c",
+                         "android.intent.category.LAUNCHER", "1"], 60)]
+    transcript = []
+    for name, command, timeout in steps:
+        result = runner(command, capture_output=True, text=True, timeout=timeout, check=False)
+        transcript.append(f"$ {' '.join(command)}\nexit={result.returncode}\n{result.stdout}{result.stderr}")
+        if result.returncode != 0 or (name == "install" and "Success" not in (result.stdout or "")):
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text("\n".join(transcript), encoding="utf-8")
+            return {"status": "FAIL", "serial": serial, "step": name, "log": str(log_path)}
+    sleep(settle_seconds)
+    alive = runner([*base, "shell", "pidof", package], capture_output=True, text=True,
+                   timeout=30, check=False)
+    logcat = runner([*base, "logcat", "-d", "-t", "400"], capture_output=True, text=True,
+                    timeout=60, check=False)
+    transcript.append(f"pidof={alive.stdout.strip()}\n--- logcat\n{logcat.stdout}")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("\n".join(transcript), encoding="utf-8")
+    crashed = "FATAL EXCEPTION" in (logcat.stdout or "") and package in (logcat.stdout or "")
+    running = alive.returncode == 0 and alive.stdout.strip() != ""
+    return {"status": "PASS" if running and not crashed else "FAIL", "serial": serial,
+            "pid": alive.stdout.strip(), "crash_in_logcat": crashed, "log": str(log_path),
+            "note": "launch smoke only; interaction and performance remain NOT RUN"}
 
 
 def release_signing(godot_dir: Path, env: dict, preset: dict) -> dict[str, str]:
@@ -464,7 +588,7 @@ def export_project(godot_dir: str, export_format: str = "apk", mode: str = "debu
                    run_import: bool = True, dry_run: bool = False,
                    min_artifact_bytes: int = MIN_ARTIFACT_BYTES,
                    env: dict | None = None, runner=subprocess.run,
-                   root: Path | None = None) -> dict:
+                   root: Path | None = None, install_run: bool = False) -> dict:
     godot_dir = Path(godot_dir).expanduser().resolve()
     if export_format not in EXPORT_FORMATS:
         raise ExportError(f"format must be one of: {', '.join(EXPORT_FORMATS)}", 2)
@@ -476,6 +600,7 @@ def export_project(godot_dir: str, export_format: str = "apk", mode: str = "debu
         raise ExportError(f"not a Godot project (missing project.godot): {godot_dir}", 2)
 
     presets = read_presets(godot_dir)
+    preset_name = default_preset_name(presets, export_format, preset_name)
     preset = find_preset(presets, preset_name)
     validate_preset_format(preset, preset_name, export_format)
     metadata = preset_metadata(preset)
@@ -554,15 +679,35 @@ def export_project(godot_dir: str, export_format: str = "apk", mode: str = "debu
         signature = verify_apk_signature(out, environment, signature_log, runner)
     else:
         signature = verify_aab_signature(out, environment, signature_log, runner)
-    return {
-        "status": "PASS", "gate": "PASS", "format": export_format, "mode": mode,
+    manifest = {"status": "NOT RUN", "reason": "AAB manifests are protobuf; inspect with bundletool"}
+    if export_format == "apk":
+        manifest = apk_metadata(out, metadata, environment, logs / f"android_badging_{stamp}.log", runner)
+        if manifest["status"] == "FAIL":
+            raise ExportError(f"APK metadata check failed: {'; '.join(manifest.get('problems', []))} "
+                              f"log={manifest.get('log')}", 1)
+    device = {"status": "NOT RUN", "reason": "not requested (use --install-run)"}
+    if install_run:
+        if export_format != "apk":
+            device = {"status": "NOT RUN", "reason": "device install needs an APK"}
+        else:
+            device = device_gate(out, metadata["package_name"], environment,
+                                 logs / f"android_device_{stamp}.log", runner)
+    report = {
+        "status": "PASS" if device["status"] != "FAIL" else "FAIL",
+        "gate": "PASS", "format": export_format, "mode": mode,
         "preset": preset_name, "artifact": str(out), "bytes": size,
         "signature": signature, "log": str(export_log), **metadata,
+        "manifest": manifest,
         "import_log": str(import_log) if run_import else "NOT RUN",
         "capability_log": str(capability_log) if check_capabilities else "NOT RUN",
-        "device_gate": "NOT RUN",
+        "device_gate": device["status"], "device": device,
+        "interaction_gate": "NOT RUN", "performance_gate": "NOT RUN",
         "play_console_gate": "NOT RUN" if export_format == "aab" else "NOT APPLICABLE",
     }
+    report_path = logs / f"android_report_{suffix}_{stamp}.json"
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    report["report"] = str(report_path)
+    return report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -579,11 +724,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true",
                         help="validate the request and print the command without exporting")
     parser.add_argument("--json", action="store_true", help="print a JSON result")
+    parser.add_argument("--install-run", action="store_true",
+                        help="install and launch the APK on a connected device/emulator")
     args = parser.parse_args(argv)
     try:
         result = export_project(
             args.godot_dir, args.format, args.mode, args.preset, args.out,
-            godot=args.godot, dry_run=args.dry_run)
+            godot=args.godot, dry_run=args.dry_run, install_run=args.install_run)
     except ExportError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         print(f"ANDROID_EXPORT_GATE=FAIL format={args.format} mode={args.mode}",
@@ -596,6 +743,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.json:
         print(json.dumps(result, indent=2))
+        return 0 if result.get("status") in ("PASS", "DRY_RUN") else 1
     elif args.dry_run:
         print("ANDROID_EXPORT_DRY_RUN=1")
         print("COMMAND=" + " ".join(result["command"]))
@@ -606,10 +754,17 @@ def main(argv: list[str] | None = None) -> int:
         label = "APK_SIGNATURE_GATE" if result["format"] == "apk" else "AAB_SIGNATURE_GATE"
         print(f"{label}={result['signature']}")
         print(f"LOG={result['log']}")
-        print("DEVICE_GATE=NOT_RUN launch and inspect on a real device or emulator")
+        manifest = result["manifest"]
+        print(f"MANIFEST_GATE={manifest['status'].replace(' ', '_')} package={manifest.get('package', '')} "
+              f"versionCode={manifest.get('version_code', '')} minSdk={manifest.get('min_sdk', '')} "
+              f"targetSdk={manifest.get('target_sdk', '')}")
+        device = result["device"]
+        print(f"DEVICE_GATE={device['status'].replace(' ', '_')} {device.get('reason') or device.get('log', '')}")
+        print("INTERACTION_GATE=NOT_RUN PERFORMANCE_GATE=NOT_RUN")
+        print(f"REPORT={result['report']}")
         if result["format"] == "aab":
             print("PLAY_CONSOLE_GATE=NOT_RUN local export is not Play acceptance")
-    return 0
+    return 0 if result.get("status") in ("PASS", "DRY_RUN") else 1
 
 
 if __name__ == "__main__":

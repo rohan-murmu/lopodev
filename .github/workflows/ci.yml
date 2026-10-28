@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # Hermetic: never download integrations, never touch a real user data dir.
+      LOPODEV_NO_INTEGRATIONS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit and integration tests (Godot/Blender/brew tests skip when absent)
+        run: python3 -m unittest discover -s tools/tests -v
+      - name: No machine-specific paths in tracked files
+        run: python3 tools/sanitize_local_paths.py --check
+      - name: Bundled knowledge, templates and generated formula are consistent
+        run: |
+          set -euo pipefail
+          export LOPODEV_DATA="$RUNNER_TEMP/lopodev-data"
+          bin/lopodev knowledge validate
+          bin/lopodev world validate templates/world_plan.json
+          python3 tools/validate_spec.py templates/project.json --no-file-checks
+          python3 tools/homebrew_formula.py --check Formula/lopodev.rb --license MIT
+
+  formula-style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: Homebrew/actions/setup-homebrew@master
+      - name: brew style
+        run: brew style Formula/lopodev.rb

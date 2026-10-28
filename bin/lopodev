@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 # Lightweight LopoDev CLI; resources are resolved relative to this installation.
 set -euo pipefail
-ROOT="${LOPODEV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+# Follow launcher symlinks (for example ~/.local/bin/lopodev) back to the
+# toolkit checkout. Portable to macOS, whose readlink lacks -f.
+SOURCE="${BASH_SOURCE[0]}"
+# Agent configs launch MCP servers through the path the user invoked (stable
+# across upgrades), not through the resolved checkout or Cellar path.
+if [[ -z "${LOPODEV_LAUNCHER:-}" ]]; then
+  case "$SOURCE" in
+    */*) LOPODEV_LAUNCHER="$(cd "$(dirname "$SOURCE")" && pwd)/$(basename "$SOURCE")" ;;
+    *) LOPODEV_LAUNCHER="$(command -v "$SOURCE")" ;;
+  esac
+  export LOPODEV_LAUNCHER
+fi
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" == /* ]] || SOURCE="$DIR/$SOURCE"
+done
+ROOT="${LOPODEV_HOME:-$(cd -P "$(dirname "$SOURCE")/.." && pwd)}"
 export LOPODEV_HOME="$ROOT"
 exec python3 "$ROOT/tools/lopodev_cli.py" "$@"

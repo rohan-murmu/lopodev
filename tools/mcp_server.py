@@ -17,6 +17,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools/godot"))
 
 import android_export  # noqa: E402
+import context_pack  # noqa: E402
+import knowledge  # noqa: E402
 import lopodev_log  # noqa: E402
 import pipeline_state  # noqa: E402
 import validate_spec  # noqa: E402
@@ -178,6 +180,29 @@ def android_export_project(workspace: Path, slug: str, export_format: str = "apk
     return result
 
 
+def task_brief(workspace: Path, slug: str, task_id: str = "") -> dict:
+    project = project_path(workspace, slug)
+    return {"slug": slug, "brief": context_pack.build(project, task_id or None)}
+
+
+def knowledge_search(workspace: Path, query: str, slug: str = "", engine_version: str = "",
+                     platform: str = "", limit: int = 5) -> dict:
+    project = project_path(workspace, slug) if slug else None
+    results = knowledge.search(project, query, "godot" if engine_version else None,
+                               engine_version or None, platform or None, limit=max(1, min(limit, 10)))
+    return {"query": query, "results": [
+        {"id": entry["id"], "status": entry.get("status"), "store": entry["_store"],
+         "title": entry.get("title"), "problem": entry.get("problem"), "score": round(score, 2)}
+        for score, entry in results]}
+
+
+def knowledge_show(workspace: Path, entry_id: str, slug: str = "") -> dict:
+    project = project_path(workspace, slug) if slug else None
+    entry = knowledge.find(project, entry_id)
+    return {**knowledge.public(entry), "store": entry["_store"],
+            "artifact_paths": [str(Path(entry["_base"]) / a["path"]) for a in entry.get("artifacts", [])]}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", required=True, type=Path,
@@ -226,6 +251,31 @@ def main() -> int:
         try:
             return context(workspace, slug)
         except (ValueError, FileNotFoundError) as exc:
+            raise MCPError(-32602, str(exc)) from exc
+
+    @server.tool()
+    def lopodev_task_brief(slug: str, task_id: str = "") -> dict:
+        """Bounded brief for one task: dependencies, verify command, skills, matching knowledge, known failures."""
+        try:
+            return task_brief(workspace, slug, task_id)
+        except (ValueError, FileNotFoundError) as exc:
+            raise MCPError(-32602, str(exc)) from exc
+
+    @server.tool()
+    def lopodev_knowledge_search(query: str, slug: str = "", engine_version: str = "",
+                                 platform: str = "", limit: int = 5) -> dict:
+        """Search verified/candidate engineering recipes before implementing. Failed/deprecated are hidden."""
+        try:
+            return knowledge_search(workspace, query, slug, engine_version, platform, limit)
+        except (ValueError, FileNotFoundError, knowledge.KnowledgeError) as exc:
+            raise MCPError(-32602, str(exc)) from exc
+
+    @server.tool()
+    def lopodev_knowledge_show(entry_id: str, slug: str = "") -> dict:
+        """Full recipe: approach, integration steps, failure modes, artifacts and validation evidence."""
+        try:
+            return knowledge_show(workspace, entry_id, slug)
+        except (ValueError, FileNotFoundError, knowledge.KnowledgeError) as exc:
             raise MCPError(-32602, str(exc)) from exc
 
     @server.tool()

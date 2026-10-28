@@ -1,0 +1,73 @@
+{
+  "id": "godot-safe-area",
+  "kind": "recipe",
+  "title": "Safe-area margin container for notches and system bars",
+  "topic": "ui/layout",
+  "tags": [
+    "safe-area",
+    "notch",
+    "cutout",
+    "system-bars",
+    "hud",
+    "layout",
+    "responsive",
+    "mobile",
+    "portrait",
+    "landscape"
+  ],
+  "engine": {
+    "name": "godot",
+    "versions": ">=4.2,<4.7"
+  },
+  "platforms": [
+    "android",
+    "ios",
+    "any"
+  ],
+  "problem": "HUD and menu buttons end up under camera cutouts, rounded corners or gesture bars on phones.",
+  "approach": "A MarginContainer maps DisplayServer.get_display_safe_area() from screen pixels into viewport units (viewport size / screen size) and re-applies on viewport resize, so it works with any stretch mode and rotation.",
+  "prerequisites": [
+    "Stretch mode canvas_items or viewport",
+    "HUD/menu content as children of the container, anchored full rect"
+  ],
+  "integration": [
+    "lopodev knowledge apply godot-safe-area --project projects/<slug> --godot-dir projects/<slug>/godot",
+    "Wrap HUD and menu roots in SafeAreaMargin (full-rect anchors)"
+  ],
+  "expected_behavior": "Content insets by exactly the unsafe band in viewport units; with no reported safe area only extra_margin applies.",
+  "artifacts": [
+    {
+      "path": "artifacts/godot-safe-area/safe_area_margin.gd",
+      "install_to": "scripts/ui/safe_area_margin.gd"
+    }
+  ],
+  "limitations": [
+    "Mapping validated headless with injected rectangles; real device cutout reporting NOT RUN"
+  ],
+  "failure_modes": [],
+  "validation": {
+    "command": "python3 \"$LOPODEV_HOME/tools/knowledge_godot_check.py\" --base \"$LOPODEV_KNOWLEDGE_BASE\" --kit artifacts/godot-safe-area --test checks/test_safe_area.gd",
+    "timeout": 300,
+    "last_result": "PASS",
+    "validated_at": "2026-10-28T02:44:56+00:00",
+    "evidence": [
+      "evidence/godot-safe-area-20261028T024456Z.log"
+    ],
+    "engine_version": "4.6.1"
+  },
+  "schema_version": 1,
+  "scope": "global",
+  "status": "verified",
+  "provenance": {
+    "source": "LopoDev maintainers",
+    "created_by": "lopodev toolkit",
+    "created_at": "2026-10-28T00:00:00+00:00"
+  },
+  "history": [
+    {
+      "ts": "2026-10-28T02:44:56+00:00",
+      "status": "verified",
+      "note": "verify --run exit=0; evidence/godot-safe-area-20261028T024456Z.log"
+    }
+  ]
+}

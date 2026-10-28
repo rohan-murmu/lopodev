@@ -33,6 +33,11 @@ check unit_tests python3 -m unittest discover -s "$ROOT/tools/tests"
 check whitespace git -C "$ROOT" diff --check
 check sanitize python3 "$ROOT/tools/sanitize_local_paths.py" --check
 check android "$ROOT/tools/godot/check_android.sh"
+check knowledge python3 "$ROOT/tools/knowledge.py" validate
+check spec_template python3 "$ROOT/tools/validate_spec.py" "$ROOT/templates/project.json" --no-file-checks
+check world_template python3 "$ROOT/tools/world_plan.py" validate "$ROOT/templates/world_plan.json"
+check formula python3 "$ROOT/tools/homebrew_formula.py" --check "$ROOT/Formula/lopodev.rb" --license MIT
+check integrations "$ROOT/bin/lopodev" doctor --project "$ROOT" --no-live
 
 if [[ ! -e "$ROOT/.opencode/agents/lopodev.md" ]]; then
   echo "INFO: installing generated OpenCode adapter for verification" >&2

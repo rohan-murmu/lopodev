@@ -65,6 +65,42 @@ Use `templates/project.json` as the starting shape and
 8. Select only the skills required for the first milestone. Record skipped
    skills and why in `GAME_SPEC.md`.
 
+## Mobile game design (design_version 2)
+
+New specs set `"design_version": 2` and must define, before any asset work:
+
+- `core_loop`: one sentence the player repeats (act -> feedback -> reward -> next).
+  One polished loop beats several shallow mechanics; cut features that do not
+  serve it and list them under `known_limitations` as deferred.
+- `mobile.orientation`: chosen from the game, not by habit (portrait for one-thumb
+  puzzle/runner, landscape for twin-stick action/shooters/strategy).
+- `controls`: `scheme` plus `touch` entries `{id, type, action, zone}`. Pick by genre:
+
+  | Genre | Touch layout |
+  |---|---|
+  | Shooter / third-person action | joystick bottom-left, look-drag right half, fire/aim/reload buttons bottom-right |
+  | Platformer | left/right dpad or joystick, jump + action buttons (>= 64 dp) |
+  | Puzzle / match | tap and drag on the board; no joystick |
+  | Strategy / builder | tap to select, drag to pan, pinch to zoom, contextual command panel |
+  | Runner | swipe lanes/jump, tap to act |
+
+  Continuous controls (joystick, look-drag, drag, pinch) need separate zones;
+  buttons are >= 44 dp. Search `lopodev knowledge search touch <genre>` and name
+  reused entries in `controls.knowledge`.
+- `screens` (`menu|select|settings|gameplay|overlay|result|loading`, each with the
+  `controls` it shows) and `navigation` (`entry`, `transitions` `{from, on, to}`,
+  `to` may be `@back` or `@quit`). Start at a main menu unless the developer asked
+  otherwise (then set `entry_reason`). Every visible control needs a transition
+  or action; every gameplay screen needs a pause overlay; every result screen
+  needs retry or menu. Use the `godot-screen-router` recipe.
+- `world_plan`: path to `docs/world_plan.json` when the game has a 3D world
+  (see the `game-world` skill and `templates/world_plan.json`).
+- Acceptance criteria for controls (simultaneous move + look + action), the full
+  navigation graph, pause/resume and restart, each with a runtime test.
+
+`python3 tools/validate_spec.py` rejects unreachable screens, dead ends, dead
+buttons, missing pause/retry, shared control zones, and tiny buttons.
+
 ## Validation
 
 ```bash

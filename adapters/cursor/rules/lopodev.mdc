@@ -15,3 +15,9 @@ ask before destructive, scope-changing, publishing, or deployment operations.
 Cursor project rules guide the selected primary Cursor agent. Project subagents
 in `.cursor/agents/` offer specialist workflows through Cursor's Task tool, but
 they do not reproduce OpenCode command syntax or all OpenCode permissions.
+
+Before work run `lopodev context --project projects/<slug> --task <id>` and
+`lopodev knowledge search "<keywords>" --project projects/<slug>`; reuse verified
+entries, validate candidates. Fix failures one cause at a time, at most 3 attempts,
+then report BLOCKED with the log. Record reusable verified solutions with
+`lopodev knowledge add` (see `docs/knowledge.md`).

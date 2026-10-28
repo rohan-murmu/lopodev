@@ -14,6 +14,9 @@ import unittest
 from pathlib import Path
 import zlib
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hermetic  # noqa: E402,F401  (no downloads, isolated user data)
+
 TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))
 
@@ -202,7 +205,17 @@ class AdapterTests(unittest.TestCase):
         self.assertTrue((self.workspace / "tools/pipeline_state.py").is_file())
         self.assertTrue((self.workspace / "templates/GAME_SPEC.md").is_file())
         self.assertEqual((self.workspace / "AGENTS.md").read_text(), "user instructions")
-        self.assertEqual((self.workspace / "opencode.json").read_text(), original_config)
+        # User values survive; LopoDev adds only the keys it manages and
+        # keeps a backup of the original file.
+        config = json.loads((self.workspace / "opencode.json").read_text())
+        self.assertEqual(config["default_agent"], "custom")
+        self.assertEqual(config["model"], "keep")
+        self.assertTrue(any("PRESERVED opencode.json:default_agent" in m for m in messages))
+        self.assertEqual(set(config["mcp"]), {"blender", "godot", "codemap"})
+        self.assertIs(config["tools"]["blender_*"], False)
+        self.assertEqual(config["permission"]["bash"]["git push*"], "ask")
+        backups = list((self.workspace / ".lopodev/backups").glob("opencode.json.*"))
+        self.assertEqual([b.read_text() for b in backups], [original_config])
 
     def test_mcp_registration_is_idempotent_and_does_not_touch_client_config(self) -> None:
         unrelated = self.workspace / "mcp.json"
@@ -238,6 +251,27 @@ class AdapterTests(unittest.TestCase):
             homebrew_formula.render("1.2.3", "fake", "MIT")
         with self.assertRaises(ValueError):
             homebrew_formula.render("1.2.3", "a" * 64, "not a license")
+
+    def test_committed_formula_matches_generator(self) -> None:
+        # Formula/lopodev.rb is generated; hand edits must go through the helper.
+        self.assertEqual(homebrew_formula.check(TOOLS.parent / "Formula/lopodev.rb", "MIT"), [])
+        with tempfile.TemporaryDirectory() as temporary:
+            stable = Path(temporary) / "lopodev.rb"
+            stable.write_text(homebrew_formula.render("1.2.3", "b" * 64, "MIT"))
+            self.assertEqual(homebrew_formula.check(stable, "MIT"), [])
+            stable.write_text(stable.read_text().replace("depends_on", "# depends_on"))
+            self.assertTrue(homebrew_formula.check(stable, "MIT"))
+
+    def test_formula_uses_stable_opt_paths_and_functional_test(self) -> None:
+        for formula in (homebrew_formula.render(None, None, "MIT"),
+                        homebrew_formula.render("1.2.3", "a" * 64, "MIT")):
+            self.assertIn('export LOPODEV_HOME="#{opt_libexec}"', formula)
+            self.assertIn('export LOPODEV_LAUNCHER="#{opt_bin}/lopodev"', formula)
+            self.assertIn('head "https://github.com/rohan-murmu/lopodev.git", branch: "main"', formula)
+            self.assertIn("KNOWLEDGE_VALIDATE=PASS", formula)
+            self.assertNotIn("/media/", formula)
+            self.assertNotIn("/home/", formula)
+        self.assertNotIn("sha256", homebrew_formula.render(None, None, "MIT"))
 
     def test_homebrew_formula_cli_hashes_the_exact_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -276,7 +310,8 @@ class AdapterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             package = Path(temporary)
             (package / "tools").mkdir()
-            (package / "tools/lopodev_cli.py").write_bytes((TOOLS / "lopodev_cli.py").read_bytes())
+            for module in ("lopodev_cli.py", "approval.py", "integrations.py", "workspace_config.py"):
+                (package / "tools" / module).write_bytes((TOOLS / module).read_bytes())
             (package / "VERSION").write_text("9.8.7-test\n")
             env = dict(os.environ, LOPODEV_HOME=str(package))
             result = subprocess.run([str(TOOLS.parent / "bin/lopodev"), "--version"],
@@ -289,10 +324,12 @@ class AdapterTests(unittest.TestCase):
     def test_generated_formula_passes_homebrew_style_parser(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             formula = Path(temporary) / "lopodev.rb"
-            formula.write_text(homebrew_formula.render("1.2.3", "a" * 64, "MIT"))
-            result = subprocess.run([shutil.which("brew"), "style", str(formula)],
-                                    text=True, capture_output=True, timeout=90, check=False)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for text in (homebrew_formula.render("1.2.3", "a" * 64, "MIT"),
+                         homebrew_formula.render(None, None, "MIT")):
+                formula.write_text(text)
+                result = subprocess.run([shutil.which("brew"), "style", str(formula)],
+                                        text=True, capture_output=True, timeout=90, check=False)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

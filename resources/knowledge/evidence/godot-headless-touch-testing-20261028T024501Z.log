@@ -1,0 +1,41 @@
+$ python3 "$LOPODEV_HOME/tools/knowledge_godot_check.py" --base "$LOPODEV_KNOWLEDGE_BASE" --kit artifacts/godot-mobile-touch-controls --test checks/test_mobile_touch.gd
+exit=0
+--- stdout
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+ok: test viewport is 1280x720 ((1280.0, 720.0))
+ok: joystick owns finger 0
+ok: full right deflection -> x=1
+ok: move_right pressed at full strength
+ok: gameplay Input.get_vector sees joystick
+ok: touch-look owns finger 1
+ok: look delta = relative * sensitivity ((0.4, -0.2))
+ok: joystick unaffected by look finger
+ok: consume_look resets
+ok: fire button claims finger 2 over look area
+ok: look did not steal the button finger
+ok: button finger drag does not rotate camera
+ok: fire released with its finger
+ok: movement still held after fire release
+ok: busy joystick ignores another finger
+ok: foreign finger drag does not move joystick
+ok: inside deadzone -> zero vector
+ok: deadzone releases actions
+ok: diagonal direction preserved
+ok: partial deflection < 1
+ok: release clears joystick
+ok: release clears actions
+ok: look releases finger 1
+ok: held before pause
+ok: pause releases movement
+ok: pause releases fire
+ok: paused joystick ignores touches
+ok: focus loss releases joystick
+ok: hiding the button releases its action
+ok: disabled button ignores touches
+KNOWLEDGE_CHECK=PASS failures=0
+
+GODOT=$LOPODEV_HOME/.tools/godot/Godot_v4.6.1-stable_linux.x86_64
+KNOWLEDGE_GODOT_CHECK=PASS exit=0
+
+--- stderr

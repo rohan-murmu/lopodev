@@ -19,6 +19,22 @@ Cursor follows its current [project rules and AGENTS.md](https://cursor.com/docs
 [Agent Skills](https://cursor.com/docs/context/skills) documentation. Always
 check your installed application version because these platform formats evolve.
 
+## Engine and code integrations
+
+`lopodev setup` installs pinned [MCP for Blender](https://github.com/ahujasid/mcp-for-blender),
+[Godot MCP](https://github.com/Coding-Solo/godot-mcp) and [Code Map](https://github.com/JordanCoin/codemap)
+(versions in `resources/integrations.json`); `lopodev install opencode` registers
+them as `lopodev mcp-run <server>`. Tools are disabled globally and enabled per
+agent: Blender for modeling/animation/level-design (paid `generate_*` and
+telemetry tools denied), Godot for gameplay/ui/level-design/qa/optimization,
+Code Map for the lead and code-editing specialists. Agents still edit files and
+run deterministic scripts directly; MCP output is observation, never gate proof.
+
+Kilo and Cursor receive the vendored skills through `.kilo/skills` and
+`.agents/skills`; register the MCP servers in their own settings with the same
+`lopodev mcp-run <server>` command. The LopoDev MCP server (`lopodev install mcp`)
+adds task briefs and knowledge search to any MCP client.
+
 ## Install in the current project
 
 Run from a LopoDev workspace or pass `--project`:

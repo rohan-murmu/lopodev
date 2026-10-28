@@ -1,0 +1,67 @@
+{
+  "id": "godot-headless-touch-testing",
+  "kind": "lesson",
+  "title": "Testing touch input headlessly in Godot",
+  "topic": "qa/testing",
+  "tags": [
+    "testing",
+    "headless",
+    "touch",
+    "multitouch",
+    "input",
+    "push-input",
+    "simulate",
+    "qa",
+    "ci"
+  ],
+  "engine": {
+    "name": "godot",
+    "versions": ">=4.2,<4.7"
+  },
+  "platforms": [
+    "any"
+  ],
+  "problem": "Touch controls are hard to verify without a device, and naive headless tests pass vacuously.",
+  "approach": "Run a SceneTree script with --headless. Set root.size explicitly (headless defaults to a 100x100 window, so layouts sized from the viewport put controls off-screen). Build InputEventScreenTouch/InputEventScreenDrag with index, position and relative, and deliver them with root.push_input(event) so they traverse _input, GUI and _unhandled_input like device input. Assert ownership and action state after each event, and assert a precondition first so later 'released' checks cannot pass vacuously.",
+  "integration": [
+    "See resources/knowledge/checks/test_mobile_touch.gd for a complete example",
+    "Run with tools/knowledge_godot_check.py or godot --headless --path <proj> --script res://test.gd"
+  ],
+  "expected_behavior": "Failures name the broken contract; the test exits non-zero.",
+  "artifacts": [],
+  "limitations": [
+    "Does not exercise OS mouse emulation from touch (Input.parse_input_event path) or real device latency"
+  ],
+  "failure_modes": [
+    {
+      "symptom": "Most touch assertions fail or pass for no reason",
+      "cause": "Headless root viewport is 100x100",
+      "fix": "root.size = Vector2i(1280, 720) before laying out controls"
+    }
+  ],
+  "validation": {
+    "command": "python3 \"$LOPODEV_HOME/tools/knowledge_godot_check.py\" --base \"$LOPODEV_KNOWLEDGE_BASE\" --kit artifacts/godot-mobile-touch-controls --test checks/test_mobile_touch.gd",
+    "timeout": 300,
+    "last_result": "PASS",
+    "validated_at": "2026-10-28T02:45:01+00:00",
+    "evidence": [
+      "evidence/godot-headless-touch-testing-20261028T024501Z.log"
+    ],
+    "engine_version": "4.6.1"
+  },
+  "schema_version": 1,
+  "scope": "global",
+  "status": "verified",
+  "provenance": {
+    "source": "LopoDev maintainers",
+    "created_by": "lopodev toolkit",
+    "created_at": "2026-10-28T00:00:00+00:00"
+  },
+  "history": [
+    {
+      "ts": "2026-10-28T02:45:01+00:00",
+      "status": "verified",
+      "note": "verify --run exit=0; evidence/godot-headless-touch-testing-20261028T024501Z.log"
+    }
+  ]
+}

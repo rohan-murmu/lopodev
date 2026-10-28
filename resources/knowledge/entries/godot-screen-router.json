@@ -1,0 +1,90 @@
+{
+  "id": "godot-screen-router",
+  "kind": "recipe",
+  "title": "Screen router: menus, overlays, pause, restart and back navigation",
+  "topic": "ui/navigation",
+  "tags": [
+    "screens",
+    "navigation",
+    "main-menu",
+    "menu",
+    "pause",
+    "resume",
+    "restart",
+    "game-over",
+    "victory",
+    "back-button",
+    "android-back",
+    "scene-transition",
+    "overlay",
+    "focus"
+  ],
+  "engine": {
+    "name": "godot",
+    "versions": ">=4.2,<4.7"
+  },
+  "platforms": [
+    "any"
+  ],
+  "problem": "Scattered change_scene calls cause duplicate HUDs, stale pause state, input held across transitions, and broken Android back behavior.",
+  "approach": "One autoload owns the current screen and an overlay stack. goto() removes the old screen immediately (not at frame end), clears overlays, unpauses and releases held actions; overlays run with PROCESS_MODE_ALWAYS and pause the tree. back() closes the top overlay, opens pause in gameplay, otherwise returns home and reports false at home so the caller can quit. Focus loss in a gameplay screen opens the pause overlay once.",
+  "prerequisites": [
+    "Project Settings: application/config/quit_on_go_back=false for Android back handling",
+    "One PackedScene per screen"
+  ],
+  "integration": [
+    "lopodev knowledge apply godot-screen-router --project projects/<slug> --godot-dir projects/<slug>/godot",
+    "Project Settings > Autoload: ScreenRouter = res://scripts/core/screen_router.gd",
+    "In a boot scene: ScreenRouter.register(&\"main_menu\", \"res://scenes/MainMenu.tscn\") for each screen, then ScreenRouter.goto(&\"main_menu\")",
+    "Buttons call ScreenRouter.goto(&\"game\"), ScreenRouter.open_overlay(&\"pause\"), ScreenRouter.close_overlay(), ScreenRouter.restart()",
+    "Set gameplay_screens and pause_overlay on the autoload if your names differ"
+  ],
+  "expected_behavior": "Exactly one screen node exists; pause/resume, restart, game over, return to menu and Android back behave predictably; no input stays held after a transition.",
+  "artifacts": [
+    {
+      "path": "artifacts/godot-screen-router/screen_router.gd",
+      "install_to": "scripts/core/screen_router.gd"
+    }
+  ],
+  "limitations": [
+    "No transition animation; add a fade in goto() if needed",
+    "Screens are instanced under the root, not via change_scene_to_*"
+  ],
+  "failure_modes": [
+    {
+      "symptom": "Two HUDs visible for a frame / double signal handlers",
+      "cause": "queue_free() alone keeps the old screen in the tree until frame end",
+      "fix": "remove_child() before queue_free() (built in)"
+    },
+    {
+      "symptom": "Android back quits the app from gameplay",
+      "cause": "quit_on_go_back left at default true",
+      "fix": "Set application/config/quit_on_go_back=false"
+    }
+  ],
+  "validation": {
+    "command": "python3 \"$LOPODEV_HOME/tools/knowledge_godot_check.py\" --base \"$LOPODEV_KNOWLEDGE_BASE\" --kit artifacts/godot-screen-router --test checks/test_screen_router.gd",
+    "timeout": 300,
+    "last_result": "PASS",
+    "validated_at": "2026-10-28T02:44:51+00:00",
+    "evidence": [
+      "evidence/godot-screen-router-20261028T024451Z.log"
+    ],
+    "engine_version": "4.6.1"
+  },
+  "schema_version": 1,
+  "scope": "global",
+  "status": "verified",
+  "provenance": {
+    "source": "LopoDev maintainers",
+    "created_by": "lopodev toolkit",
+    "created_at": "2026-10-28T00:00:00+00:00"
+  },
+  "history": [
+    {
+      "ts": "2026-10-28T02:44:51+00:00",
+      "status": "verified",
+      "note": "verify --run exit=0; evidence/godot-screen-router-20261028T024451Z.log"
+    }
+  ]
+}

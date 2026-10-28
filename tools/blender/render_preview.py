@@ -18,6 +18,17 @@ import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 
+# Camera directions from the subject (Blender +Z up, front faces -Y).
+VIEWS = {
+    "three_quarter": (0.95, -1.25, 0.78),
+    "front": (0.0, -1.0, 0.12),
+    "back": (0.0, 1.0, 0.12),
+    "left": (-1.0, 0.0, 0.12),
+    "right": (1.0, 0.0, 0.12),
+    "top": (0.0, -0.001, 1.0),
+}
+
+
 def parse_args() -> argparse.Namespace:
     argv = sys.argv
     argv = argv[argv.index("--") + 1:] if "--" in argv else []
@@ -27,6 +38,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--frame", type=int, default=None)
     parser.add_argument("--frames", default=None,
                         help="comma-separated frame numbers for an animation strip")
+    parser.add_argument("--views", default="three_quarter",
+                        help="comma-separated: " + ",".join(VIEWS) + " (silhouette and proportion review)")
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--engine", default=None)
@@ -96,7 +109,7 @@ def union_bounds(frames: list[int]) -> tuple[Vector, Vector]:
 
 
 def add_camera(center: Vector, radius: float, width: int,
-               height: int) -> bpy.types.Object:
+               height: int, view: str = "three_quarter") -> bpy.types.Object:
     camera_data = bpy.data.cameras.new("PreviewCamera")
     camera = bpy.data.objects.new("PreviewCamera", camera_data)
     bpy.context.scene.collection.objects.link(camera)
@@ -107,7 +120,7 @@ def add_camera(center: Vector, radius: float, width: int,
     vertical_fov = 2.0 * math.atan(math.tan(horizontal_fov * 0.5) / aspect)
     limiting_fov = min(horizontal_fov, vertical_fov)
     distance = max(radius / math.sin(limiting_fov * 0.5) * 1.18, radius * 2.0, 1.0)
-    direction = Vector((0.95, -1.25, 0.78)).normalized()
+    direction = Vector(VIEWS[view]).normalized()
     camera.location = center + direction * distance
     camera.rotation_mode = "QUATERNION"
     camera.rotation_quaternion = (center - camera.location).to_track_quat("-Z", "Y")
@@ -186,26 +199,38 @@ def main() -> int:
     if not frames:
         raise SystemExit("no frames selected for preview")
 
+    views = [view.strip() for view in args.views.split(",") if view.strip()]
+    unknown = [view for view in views if view not in VIEWS]
+    if unknown or not views:
+        raise SystemExit(f"unknown view(s) {unknown}; choose from {sorted(VIEWS)}")
+
     engine = choose_engine(args.engine)
     minimum, maximum = union_bounds(frames)
     center = (minimum + maximum) * 0.5
     radius = max((maximum - minimum).length * 0.5, 0.1)
-    add_camera(center, radius, args.width, args.height)
     add_lights(center, radius)
     configure_render(engine, args.width, args.height)
 
     output = os.path.abspath(args.out)
     stem, extension = os.path.splitext(output)
     paths = []
-    for frame in frames:
-        path = output if len(frames) == 1 else f"{stem}_f{frame:04d}{extension or '.png'}"
-        paths.append(render_one(path, frame))
+    for view in views:
+        camera = add_camera(center, radius, args.width, args.height, view)
+        view_stem = stem if views == ["three_quarter"] else f"{stem}_{view}"
+        for frame in frames:
+            if len(frames) == 1:
+                path = view_stem + (extension or ".png")
+            else:
+                path = f"{view_stem}_f{frame:04d}{extension or '.png'}"
+            paths.append(render_one(path, frame))
+        bpy.data.objects.remove(camera, do_unlink=True)
 
     report = {
         "status": "PASS",
         "blend": blend_path,
         "engine": engine,
         "frames": frames,
+        "views": views,
         "paths": paths,
         "bounds": {
             "min": [round(value, 6) for value in minimum],

@@ -77,3 +77,31 @@ These are starting limits, not measured device guarantees.
 
 Report the exact command, APK path, log path, device status, and every unverified
 mobile claim.
+
+## Verified controls, navigation and UI kit
+
+Before writing touch, navigation or safe-area code, reuse the verified recipes:
+
+```bash
+lopodev knowledge search touch joystick look --engine-version 4.6.1 --platform android
+lopodev knowledge apply godot-mobile-touch-controls --project projects/<slug> --godot-dir projects/<slug>/godot
+lopodev knowledge apply godot-screen-router --project projects/<slug> --godot-dir projects/<slug>/godot
+lopodev knowledge apply godot-safe-area --project projects/<slug> --godot-dir projects/<slug>/godot
+```
+
+They handle per-finger ownership, simultaneous move/look/fire, release on
+pause/focus loss, single-owner screen changes and Android back. Gameplay HUD
+buttons must be `TouchActionButton` (plain `Button` sees only the first finger).
+Set `application/config/quit_on_go_back=false` for the router's back handling.
+
+UI style system, planned before building screens:
+
+- Palette: 1 background, 1 surface, 1 accent, 1 danger, text at >= 4.5:1 contrast.
+- Type: one display font for titles, one readable font for body; >= 16 px body at
+  the reference resolution.
+- Hierarchy: one primary button per screen; secondary and destructive styled
+  differently; pressed/disabled/selected states for every button.
+- One Godot `Theme` resource for all screens; icons in one style and stroke.
+- Game-styled panels (art direction from the spec), not dashboard cards.
+- Test layouts at 1280x720, 2400x1080 (20:9 phone) and 2048x1536 (4:3 tablet),
+  and with a simulated notch through `SafeAreaMargin.apply_safe_rect`.

@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "comment": "Pinned third-party integrations. Bump a pin only after re-running `lopodev setup` and `lopodev doctor` against it; checksums are of the exact codeload archive.",
+  "mcp_servers": {
+    "blender": {
+      "upstream": "https://github.com/ahujasid/mcp-for-blender",
+      "license": "MIT",
+      "kind": "python",
+      "package": "mcp-for-blender",
+      "version": "2.2.4",
+      "entrypoint": "mcp-for-blender",
+      "requires": ["uv"],
+      "environment": {
+        "BLENDER_HOST": "localhost",
+        "BLENDER_PORT": "9876",
+        "DISABLE_TELEMETRY": "true"
+      },
+      "runtime_endpoint": {"host_env": "BLENDER_HOST", "port_env": "BLENDER_PORT"},
+      "agents": ["modeling", "animation", "level-design"],
+      "notes": "Talks to the MCP for Blender addon inside a running Blender. Premium/Meshy/Hyper3D/Sketchfab generators are off by policy; PolyHaven (CC0) assets must still be recorded in ASSET_LICENSES.md."
+    },
+    "godot": {
+      "upstream": "https://github.com/Coding-Solo/godot-mcp",
+      "license": "MIT",
+      "kind": "node",
+      "package": "@coding-solo/godot-mcp",
+      "version": "0.1.1",
+      "entrypoint": "build/index.js",
+      "requires": ["node", "npm"],
+      "environment": {},
+      "agents": ["gameplay", "level-design", "ui", "qa-release", "optimization"],
+      "notes": "Launches/runs Godot projects and captures debug output; GODOT_PATH defaults to the pinned Godot."
+    },
+    "codemap": {
+      "upstream": "https://github.com/JordanCoin/codemap",
+      "license": "MIT",
+      "kind": "binary",
+      "package": "codemap",
+      "version": "4.6.0",
+      "entrypoint": "codemap",
+      "args": ["mcp"],
+      "install": {
+        "brew": "jordancoin/tap/codemap",
+        "go": "github.com/JordanCoin/codemap@v4.6.0"
+      },
+      "environment": {},
+      "agents": ["lopodev", "gameplay", "ui", "optimization", "qa-release", "level-design"],
+      "notes": "Static binary; `codemap mcp` is a stdio MCP server for structure, symbol and dependency queries."
+    }
+  },
+  "skill_packs": {
+    "blender-skills": {
+      "upstream": "https://github.com/EL4CTEO/blender-skills",
+      "repo": "EL4CTEO/blender-skills",
+      "commit": "71d031dab8bc6729504d11a78cbe91945401045f",
+      "sha256": "019d1b7d7cd14b3b18701ea01ee281b06957b5be0aaf66c8dd1aa78077964864",
+      "license": "MIT",
+      "skills_dir": "skills",
+      "skills": [
+        "blender-core", "blender-hardsurface-modeling", "blender-retopology-uv",
+        "blender-pbr-materials", "blender-export-pipelines", "blender-game-optimization",
+        "blender-asset-qa", "blender-character-rigging", "blender-lighting-lookdev",
+        "blender-scene-setup", "blender-geometry-nodes", "blender-workflow-recipes",
+        "blender-texture-baking"
+      ],
+      "excluded": {
+        "blender-animation": "name collides with LopoDev's own pipeline skill",
+        "blender-sculpting": "high-poly workflow outside mobile budgets",
+        "blender-simulation": "not used for game assets",
+        "blender-weather-fx": "film/render oriented",
+        "blender-time-of-day": "film/render oriented",
+        "blender-facial-shapekeys": "out of scope for low-poly mobile characters",
+        "blender-addon-development": "not a game-asset workflow",
+        "blender-rendering": "LopoDev uses tools/blender/render_preview.py",
+        "blender-pipeline-automation": "overlaps LopoDev's own pipeline"
+      }
+    },
+    "godot-skills": {
+      "upstream": "https://github.com/vl4dt/godot-skills",
+      "repo": "vl4dt/godot-skills",
+      "commit": "1ae280d35f2cc3931d4d8eb63f4bac82d6acf4a0",
+      "sha256": "36b948cf4a6e281c8ce1ba048ba6c724c03db8569ba65d781c7f5a5b8201d699",
+      "license": "MIT",
+      "skills_dir": "skills",
+      "skills": [
+        "godot-architecture", "godot-gdscript-patterns", "godot-input", "godot-ui",
+        "godot-state-management", "godot-physics", "godot-animation", "godot-audio",
+        "godot-performance", "godot-debugging", "godot-headless-workflow",
+        "godot-save-systems", "godot-shaders-vfx", "godot-project-setup"
+      ],
+      "excluded": {
+        "godot-csharp-patterns": "LopoDev generates GDScript",
+        "godot-networking": "single-player mobile scope",
+        "godot-47-migration": "toolchain is pinned to 4.6.1",
+        "godot-i18n": "add per project when localization is in scope",
+        "godot-dialog-systems": "add per project when needed",
+        "godot-inventory-economy": "add per project when needed",
+        "godot-brainstorming": "game-planner owns design",
+        "godot-code-review": "qa-release owns review"
+      }
+    },
+    "blender-lpm-skill": {
+      "upstream": "https://github.com/ozanzeng/blender-LPM-skill",
+      "repo": "ozanzeng/blender-LPM-skill",
+      "commit": "687d0a46f1280bc7d11dbf83539840100ec909dc",
+      "sha256": "49986b7be50c95bcabeed35e168f5e2aaada05535c5ed428de36731a0a3995d0",
+      "license": "MIT",
+      "skills_dir": "skills",
+      "skills": ["blender-lpm-skill"],
+      "excluded": {}
+    },
+    "blender-agent-skills": {
+      "upstream": "https://github.com/oh-ashen-one/blender-agent-skills",
+      "repo": "oh-ashen-one/blender-agent-skills",
+      "commit": "e45ebb2b4ef29eace83572f083daff94c10215a1",
+      "sha256": "cd88e127d06720cffc869d498eb6d0ccb1e095f500423d032320c76e29a92c99",
+      "license": "MIT",
+      "skills_dir": ".",
+      "skills": [
+        "blender-staged-scene-construction", "concept-target-visual-gate",
+        "blender-mcp-isolated-sessions"
+      ],
+      "excluded": {
+        "blender-rig-verification": "mechanical/web scroll-sequence focus",
+        "voxel-diorama-blender": "niche art style; add per project"
+      }
+    }
+  }
+}

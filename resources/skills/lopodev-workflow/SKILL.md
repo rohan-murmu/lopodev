@@ -21,6 +21,20 @@ Read `AGENTS.md`, `GAME_SPEC.md`, `project.json`, `ASSET_LICENSES.md`, the task'
 dependency outputs, and the last QA report. If state is inconsistent, repair the
 state before starting new production work.
 
+Then build the task brief instead of re-reading everything:
+
+```bash
+lopodev context --project projects/<slug> [--task <id>]
+lopodev knowledge search "<task keywords>" --project projects/<slug> --engine-version <godot>
+```
+
+The brief is bounded (about 6 KB): the task, dependency status, verify command,
+skills, enabled MCP tools, matching knowledge and known failures. Open the
+authoritative files it names only when needed. Project memory (decisions for
+this game) lives in `projects/<slug>/knowledge/`; global recipes are reusable
+across games. A `candidate` recipe is a hint, a `verified` one has evidence, and
+`failed`/`deprecated` entries are hidden on purpose.
+
 ## 2. Choose exactly one task
 
 Pick the first task whose dependencies are `verified`, status is not `blocked`,
@@ -109,3 +123,21 @@ Acceptance criteria: criterion -> met/not met -> evidence
 Known limitations: untested paths and environment warnings
 Next safe step: one concrete action
 ```
+
+## 7. Learn from verified work
+
+At the end of each verified milestone:
+
+1. Name what was solved that another game could reuse (input pattern, export
+   fix, diagnosis). Game-specific choices stay in project memory.
+2. Write a draft entry (see `docs/knowledge.md` for the schema) with artifacts
+   for substantial code and a `validation.command` that proves it.
+3. `lopodev knowledge add draft.json --project projects/<slug>` (always starts
+   as `candidate`), then `lopodev knowledge --project projects/<slug> verify <id> --run`.
+4. Only a verified project entry may be promoted:
+   `lopodev knowledge --project projects/<slug> promote <id> --note "<why reusable>"`.
+5. When a reused recipe fails here, diagnose it; if the recipe is wrong, run
+   `lopodev knowledge fail <id> --reason "<evidence>"` so no one reuses it blindly.
+
+Never store secrets, credentials, private data, chat transcripts or reasoning
+dumps; store concise decisions, commands, evidence paths and limitations.

@@ -1,0 +1,15 @@
+$ python3 "$LOPODEV_HOME/tools/knowledge_godot_check.py" --base "$LOPODEV_KNOWLEDGE_BASE" --kit artifacts/godot-safe-area --test checks/test_safe_area.gd
+exit=0
+--- stdout
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+ok: portrait notch maps to viewport units [0, 50, 0, 30]
+ok: landscape cutout on the left [44, 0, 0, 0]
+ok: no safe area reported -> extra margin only
+ok: zero screen size is ignored safely
+KNOWLEDGE_CHECK=PASS failures=0
+
+GODOT=$LOPODEV_HOME/.tools/godot/Godot_v4.6.1-stable_linux.x86_64
+KNOWLEDGE_GODOT_CHECK=PASS exit=0
+
+--- stderr

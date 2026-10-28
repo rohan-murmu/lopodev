@@ -4,12 +4,59 @@
   "instructions": [
     "AGENTS.md"
   ],
+  "permission": {
+    "edit": "allow",
+    "webfetch": "allow",
+    "external_directory": "ask",
+    "doom_loop": "ask",
+    "bash": {
+      "*": "allow",
+      "rm -rf *": "ask",
+      "rm -fr *": "ask",
+      "rm -r *": "ask",
+      "rm -R *": "ask",
+      "sudo *": "ask",
+      "su *": "ask",
+      "chmod -R *": "ask",
+      "chown -R *": "ask",
+      "dd *": "ask",
+      "mkfs*": "ask",
+      "shred *": "ask",
+      "git push*": "ask",
+      "git reset --hard*": "ask",
+      "git clean*": "ask",
+      "git checkout -- *": "ask",
+      "git restore *": "ask",
+      "git rebase*": "ask",
+      "git commit --amend*": "ask",
+      "git branch -D*": "ask",
+      "git stash drop*": "ask",
+      "git filter-branch*": "ask",
+      "gh release*": "ask",
+      "gh repo*": "ask",
+      "gh pr merge*": "ask",
+      "npm publish*": "ask",
+      "twine upload*": "ask",
+      "brew tap*": "ask",
+      "brew uninstall*": "ask",
+      "adb uninstall*": "ask",
+      "*keytool*": "ask",
+      "*apksigner sign*": "ask",
+      "*jarsigner*": "ask",
+      "curl * | *sh*": "ask",
+      "wget * | *sh*": "ask",
+      "*pipeline_state.py approve*": "ask",
+      "*pipeline_state.py reject*": "ask",
+      "*pipeline_state.py reopen*": "ask"
+    }
+  },
   "mcp": {
     "blender": {
       "type": "local",
       "command": [
-        "uvx",
-        "mcp-for-blender"
+        "lopodev",
+        "mcp-run",
+        "blender"
       ],
       "enabled": true,
       "environment": {
@@ -18,6 +65,29 @@
         "DISABLE_TELEMETRY": "true"
       },
       "timeout": 60000
+    },
+    "godot": {
+      "type": "local",
+      "command": [
+        "lopodev",
+        "mcp-run",
+        "godot"
+      ],
+      "enabled": true
+    },
+    "codemap": {
+      "type": "local",
+      "command": [
+        "lopodev",
+        "mcp-run",
+        "codemap"
+      ],
+      "enabled": true
     }
+  },
+  "tools": {
+    "blender_*": false,
+    "godot_*": false,
+    "codemap_*": false
   }
 }

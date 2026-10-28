@@ -21,7 +21,20 @@ KNOWN_SKILLS = {
     "mobile-low-poly",
     "lopodev-workflow",
 }
-KNOWN_GATES = {"generation", "asset", "import", "content", "runtime", "visual", "build", "manual"}
+try:
+    # Vendored skills installed by `lopodev setup` are valid task skills too.
+    KNOWN_SKILLS |= {skill for pack in json.loads(
+        (Path(__file__).resolve().parent.parent / "resources/integrations.json").read_text()
+    )["skill_packs"].values() for skill in pack["skills"]}
+except (OSError, json.JSONDecodeError, KeyError):
+    pass
+KNOWN_GATES = {"generation", "asset", "import", "content", "runtime", "visual", "build",
+               "android", "manual"}
+SCREEN_KINDS = {"menu", "select", "settings", "gameplay", "overlay", "result", "loading"}
+CONTROL_TYPES = {"joystick", "dpad", "button", "look-drag", "tap", "swipe", "drag", "pinch", "hold"}
+CONTINUOUS_CONTROLS = {"joystick", "dpad", "look-drag", "drag", "pinch"}
+NAV_SPECIAL = {"@back", "@quit"}
+ORIENTATIONS = {"portrait", "landscape", "sensor"}
 TASK_STATUS = {
     "planned", "in_progress", "blocked", "needs_approval", "verified", "failed",
     # Legacy first-draft values kept for existing projects such as crystal_test.
@@ -177,6 +190,8 @@ def validate(data: dict, project_dir: Path | None = None) -> list[str]:
     check(isinstance(data.get("known_limitations"), list),
           "known_limitations must be a list", errors)
 
+    errors.extend(validate_design(data))
+
     if project_dir is not None:
         godot_setting = data.get("godot_dir")
         if isinstance(godot_setting, str) and isinstance(main_scene, str):
@@ -185,7 +200,152 @@ def validate(data: dict, project_dir: Path | None = None) -> list[str]:
             if not scene_path.is_absolute():
                 scene_path = project_dir.parent.parent / scene_path
             check(scene_path.exists(), f"main_scene file not found: {scene_path}", errors)
+            errors.extend(check_engine_orientation(data, _godot_dir(godot_setting, project_dir)))
 
+    return errors
+
+
+# project.godot window/handheld/orientation (DisplayServer.ScreenOrientation).
+GODOT_ORIENTATION = {"0": "landscape", "1": "portrait", "2": "landscape", "3": "portrait",
+                     "4": "landscape", "5": "portrait", "6": "sensor"}
+
+
+def _godot_dir(setting: str, project_dir: Path) -> Path:
+    path = Path(setting)
+    return path if path.is_absolute() else project_dir.parent.parent / path
+
+
+def check_engine_orientation(data: dict, godot_dir: Path) -> list[str]:
+    """The orientation the game ships with must match the spec."""
+    wanted = (data.get("mobile") or {}).get("orientation")
+    try:
+        text = (godot_dir / "project.godot").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    match = re.search(r"^window/handheld/orientation=(\d+)", text, re.MULTILINE)
+    actual = GODOT_ORIENTATION.get(match.group(1) if match else "0", "landscape")
+    if wanted in ("landscape", "portrait") and actual != wanted:
+        return [f"mobile.orientation is {wanted!r} but project.godot window/handheld/orientation "
+                f"ships {actual!r}"]
+    return []
+
+
+def validate_design(data: dict) -> list[str]:
+    """Screens, navigation and touch controls.
+
+    Required from design_version 2 (new projects); validated whenever present
+    so older specs keep passing until they opt in.
+    """
+    errors: list[str] = []
+    required = data.get("design_version", 1) >= 2
+    mobile = data.get("mobile") if isinstance(data.get("mobile"), dict) else {}
+    if required:
+        for key in ("core_loop", "screens", "navigation"):
+            check(key in data, f"design_version 2 requires `{key}`", errors)
+        check(isinstance(data.get("core_loop"), str) and len(data.get("core_loop", "")) >= 20,
+              "core_loop must describe the repeated player loop in a sentence", errors)
+        if mobile.get("touch_input"):
+            check("controls" in data, "touch_input projects require a `controls` plan", errors)
+            check(mobile.get("orientation") in ORIENTATIONS,
+                  f"mobile.orientation must be one of {sorted(ORIENTATIONS)}", errors)
+
+    screens = data.get("screens")
+    by_id: dict[str, dict] = {}
+    if screens is not None:
+        check(isinstance(screens, list) and screens, "screens must be a non-empty list", errors)
+        for index, screen in enumerate(screens if isinstance(screens, list) else []):
+            prefix = f"screens[{index}]"
+            if not isinstance(screen, dict) or not isinstance(screen.get("id"), str):
+                errors.append(f"{prefix} must be an object with an id")
+                continue
+            check(screen["id"] not in by_id, f"duplicate screen id: {screen['id']}", errors)
+            check(screen.get("kind") in SCREEN_KINDS,
+                  f"{prefix}.kind must be one of {sorted(SCREEN_KINDS)}", errors)
+            by_id[screen["id"]] = screen
+
+    navigation = data.get("navigation")
+    if navigation is not None and by_id:
+        if not isinstance(navigation, dict):
+            return errors + ["navigation must be an object"]
+        entry = navigation.get("entry")
+        check(entry in by_id, f"navigation.entry must be a declared screen (got {entry!r})", errors)
+        if entry in by_id and by_id[entry].get("kind") != "menu":
+            check(bool(navigation.get("entry_reason")),
+                  "entry screen is not a menu; add navigation.entry_reason (the developer asked for it)",
+                  errors)
+        transitions = navigation.get("transitions")
+        check(isinstance(transitions, list) and transitions, "navigation.transitions must be a non-empty list",
+              errors)
+        outgoing: dict[str, list[dict]] = {screen: [] for screen in by_id}
+        for index, edge in enumerate(transitions if isinstance(transitions, list) else []):
+            prefix = f"navigation.transitions[{index}]"
+            if not isinstance(edge, dict):
+                errors.append(f"{prefix} must be an object")
+                continue
+            source, target = edge.get("from"), edge.get("to")
+            check(source in by_id, f"{prefix}.from unknown screen {source!r}", errors)
+            check(target in by_id or target in NAV_SPECIAL, f"{prefix}.to unknown screen {target!r}", errors)
+            check(isinstance(edge.get("on"), str) and bool(edge.get("on")),
+                  f"{prefix}.on must name the control or event that triggers it", errors)
+            if source in outgoing:
+                outgoing[source].append(edge)
+        reachable, frontier = set(), [entry] if entry in by_id else []
+        while frontier:
+            screen = frontier.pop()
+            if screen in reachable:
+                continue
+            reachable.add(screen)
+            frontier.extend(edge["to"] for edge in outgoing.get(screen, []) if edge.get("to") in by_id)
+        for screen_id, screen in by_id.items():
+            check(screen_id in reachable, f"screen {screen_id} is unreachable from {entry}", errors)
+            if screen_id != entry:
+                check(bool(outgoing[screen_id]), f"screen {screen_id} is a dead end (no way out)", errors)
+            triggers = {edge.get("on") for edge in outgoing[screen_id]}
+            for control in screen.get("controls", []):
+                check(control in triggers,
+                      f"screen {screen_id} control {control!r} has no transition or action", errors)
+            if screen.get("kind") == "gameplay" and mobile.get("touch_input"):
+                check(any(by_id.get(edge.get("to"), {}).get("kind") == "overlay"
+                          for edge in outgoing[screen_id]),
+                      f"gameplay screen {screen_id} needs a pause overlay transition", errors)
+            if screen.get("kind") == "result":
+                check(any(by_id.get(edge.get("to"), {}).get("kind") in {"gameplay", "menu", "select"}
+                          for edge in outgoing[screen_id]),
+                      f"result screen {screen_id} needs retry or return-to-menu", errors)
+
+    controls = data.get("controls")
+    if controls is not None:
+        if not isinstance(controls, dict):
+            return errors + ["controls must be an object"]
+        check(isinstance(controls.get("scheme"), str) and bool(controls.get("scheme")),
+              "controls.scheme must name the control layout (e.g. twin-stick, tap, drag)", errors)
+        touch = controls.get("touch")
+        check(isinstance(touch, list) and touch, "controls.touch must list the touch controls", errors)
+        seen: set[str] = set()
+        zones: dict[str, str] = {}
+        for index, control in enumerate(touch if isinstance(touch, list) else []):
+            prefix = f"controls.touch[{index}]"
+            if not isinstance(control, dict):
+                errors.append(f"{prefix} must be an object")
+                continue
+            control_id = control.get("id")
+            check(isinstance(control_id, str) and control_id not in seen,
+                  f"{prefix}.id must be unique", errors)
+            seen.add(str(control_id))
+            kind = control.get("type")
+            check(kind in CONTROL_TYPES, f"{prefix}.type must be one of {sorted(CONTROL_TYPES)}", errors)
+            check(isinstance(control.get("action"), str) and bool(control.get("action")),
+                  f"{prefix}.action must name the gameplay action it drives", errors)
+            zone = control.get("zone")
+            if kind in CONTINUOUS_CONTROLS and isinstance(zone, str):
+                check(zone not in zones,
+                      f"{prefix} shares zone {zone!r} with {zones.get(zone)}; continuous touch "
+                      "controls need separate zones to avoid finger conflicts", errors)
+                zones[zone] = str(control_id)
+            if kind == "button":
+                size = control.get("min_size_dp", 48)
+                check(isinstance(size, (int, float)) and size >= 44,
+                      f"{prefix}.min_size_dp must be >= 44 for reliable touch", errors)
     return errors
 
 

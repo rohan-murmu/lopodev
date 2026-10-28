@@ -170,3 +170,23 @@ interaction, and performance evidence.
 - Android export is independently reproducible; device/perf remain explicitly
   `NOT RUN` when no device is present.
 - Documentation describes the behavior that was actually verified.
+
+## Supporting subsystems
+
+The agents reason; these deterministic tools give them structure, memory and
+verification. Each is a small module with tests in `tools/tests/`.
+
+| Subsystem | Module | Purpose |
+|---|---|---|
+| Integrations | `tools/integrations.py`, `resources/integrations.json` | Pinned, checksum-verified MCP servers and skill packs in the user data dir; `mcp-run` launcher; live activation diagnostics |
+| Workspace config ownership | `tools/workspace_config.py` | Key-level merge/uninstall of `opencode.json` with backups and legacy migration |
+| Approval mode | `tools/approval.py` | `auto`/`manual` tool permissions rendered into OpenCode; destructive, publishing and gate commands always ask |
+| Knowledge | `tools/knowledge.py`, `resources/knowledge/` | Project/user/bundled recipes with status, compatibility, artifacts and evidence; reuse across games |
+| Context brief | `tools/context_pack.py` | Bounded per-task brief (task, gates, knowledge, known failures) for small-context models |
+| World planning | `tools/world_plan.py`, `tools/godot/world_to_tscn.py` | Seeded placement, spatial/gameplay validation, scene assembly |
+| Design validation | `tools/validate_spec.py` | Screens, navigation graph, touch controls, orientation consistency |
+| MCP probe | `tools/mcp_probe.py` | One real read-only tool call per server (`lopodev doctor --probe`) |
+| Android gates | `tools/godot/android_export.py` | Export, signature, packaged-manifest and optional device launch checks with a JSON report |
+
+Agents get MCP tools per role (frontmatter `tools`), never global
+`bash`/`edit` overrides, so the workspace approval policy applies to all of them.

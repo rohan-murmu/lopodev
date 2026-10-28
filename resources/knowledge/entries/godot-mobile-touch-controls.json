@@ -1,0 +1,106 @@
+{
+  "id": "godot-mobile-touch-controls",
+  "kind": "recipe",
+  "title": "Multitouch virtual joystick, touch-look and action buttons",
+  "topic": "input/touch",
+  "tags": [
+    "touch",
+    "multitouch",
+    "virtual-joystick",
+    "joystick",
+    "finger",
+    "touch-look",
+    "camera",
+    "aim",
+    "fire-button",
+    "hud",
+    "mobile",
+    "shooter",
+    "action",
+    "controls"
+  ],
+  "engine": {
+    "name": "godot",
+    "versions": ">=4.3,<4.7"
+  },
+  "platforms": [
+    "android",
+    "ios",
+    "any"
+  ],
+  "problem": "Mobile games need movement, camera look and action buttons that work at the same time with several fingers, without UI and gameplay stealing each other's touches or leaving input stuck after pause/focus loss.",
+  "approach": "Each control owns one finger index from press to release. VirtualJoystick and TouchActionButton claim fingers in _input and mark them handled; TouchLook receives the rest through _gui_input (Godot 4 routes drags per finger to the pressed control). Controls press real InputMap actions with analog strength so gameplay keeps using Input.get_vector() and works with keyboard/gamepad too. Pause, hide, focus loss and app backgrounding release every held finger.",
+  "prerequisites": [
+    "InputMap actions move_left/move_right/move_up/move_down plus one per action button (e.g. fire)",
+    "A HUD CanvasLayer above the 3D view"
+  ],
+  "integration": [
+    "lopodev knowledge apply godot-mobile-touch-controls --project projects/<slug> --godot-dir projects/<slug>/godot",
+    "HUD: full-rect Control > VirtualJoystick (bottom-left ~35% x 60%), TouchLook (right ~60%), TouchActionButton nodes on top of TouchLook (bottom-right)",
+    "Player: var move := Input.get_vector(&\"move_left\", &\"move_right\", &\"move_up\", &\"move_down\")",
+    "Camera: var look: Vector2 = $HUD/TouchLook.consume_look(); yaw -= look.x; pitch = clamp(pitch - look.y, -1.2, 1.2)",
+    "Hide or remove touch controls on desktop builds with DisplayServer.is_touchscreen_available() if desired"
+  ],
+  "expected_behavior": "Holding the joystick, dragging to look and holding fire work simultaneously; releasing one never releases the others; pausing or backgrounding releases everything.",
+  "artifacts": [
+    {
+      "path": "artifacts/godot-mobile-touch-controls/virtual_joystick.gd",
+      "install_to": "scripts/ui/virtual_joystick.gd"
+    },
+    {
+      "path": "artifacts/godot-mobile-touch-controls/touch_look.gd",
+      "install_to": "scripts/ui/touch_look.gd"
+    },
+    {
+      "path": "artifacts/godot-mobile-touch-controls/touch_action_button.gd",
+      "install_to": "scripts/ui/touch_action_button.gd"
+    }
+  ],
+  "limitations": [
+    "Validated with synthetic InputEventScreenTouch/Drag in headless Godot, not on a physical device",
+    "Plain Button nodes still see only the first finger (mouse emulation); use TouchActionButton in gameplay HUDs",
+    "No visual art beyond translucent circles"
+  ],
+  "failure_modes": [
+    {
+      "symptom": "Touch-look never rotates the camera",
+      "cause": "Look handler in _unhandled_input while a full-rect HUD Control keeps the default MOUSE_FILTER_STOP, which consumes touches first",
+      "fix": "Handle look in _gui_input on a STOP control (as TouchLook does), or set the HUD root to MOUSE_FILTER_IGNORE"
+    },
+    {
+      "symptom": "Player keeps walking after pause or app switch",
+      "cause": "The finger's release event never arrives while paused/backgrounded",
+      "fix": "Release on NOTIFICATION_PAUSED/APPLICATION_FOCUS_OUT/APPLICATION_PAUSED (built in)"
+    },
+    {
+      "symptom": "Fire button stops working while moving",
+      "cause": "Standard Button relies on mouse emulation (first finger only)",
+      "fix": "Use TouchActionButton"
+    }
+  ],
+  "validation": {
+    "command": "python3 \"$LOPODEV_HOME/tools/knowledge_godot_check.py\" --base \"$LOPODEV_KNOWLEDGE_BASE\" --kit artifacts/godot-mobile-touch-controls --test checks/test_mobile_touch.gd",
+    "timeout": 300,
+    "last_result": "PASS",
+    "validated_at": "2026-10-28T02:44:46+00:00",
+    "evidence": [
+      "evidence/godot-mobile-touch-controls-20261028T024446Z.log"
+    ],
+    "engine_version": "4.6.1"
+  },
+  "schema_version": 1,
+  "scope": "global",
+  "status": "verified",
+  "provenance": {
+    "source": "LopoDev maintainers",
+    "created_by": "lopodev toolkit",
+    "created_at": "2026-10-28T00:00:00+00:00"
+  },
+  "history": [
+    {
+      "ts": "2026-10-28T02:44:46+00:00",
+      "status": "verified",
+      "note": "verify --run exit=0; evidence/godot-mobile-touch-controls-20261028T024446Z.log"
+    }
+  ]
+}

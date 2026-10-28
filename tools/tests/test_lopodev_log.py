@@ -11,6 +11,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hermetic  # noqa: E402,F401  (no downloads, isolated user data)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import lopodev_log as log  # noqa: E402

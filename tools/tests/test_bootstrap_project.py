@@ -9,6 +9,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hermetic  # noqa: E402,F401  (no downloads, isolated user data)
+
 TOOLKIT = Path(__file__).resolve().parents[2]
 SCRIPT = TOOLKIT / "tools" / "bootstrap_project.py"
 
@@ -40,9 +43,16 @@ class BootstrapProjectTests(unittest.TestCase):
             self.assertTrue((workspace / "opencode.json").is_file())
             config = json.loads((workspace / "opencode.json").read_text())
             self.assertEqual(config["default_agent"], "lopodev")
+            self.assertEqual(set(config["mcp"]), {"blender", "godot", "codemap"})
+            # Bootstrap records ownership, so uninstall can undo it.
+            manifest = json.loads((workspace / ".lopodev/managed-files.json").read_text())
+            self.assertIn("mcp.godot", manifest["config_keys"]["opencode.json"])
             godot_text = (project / "godot" / "project.godot").read_text()
             self.assertIn('run/main_scene="res://scenes/Main.tscn"', godot_text)
             self.assertIn("import_etc2_astc=true", godot_text)
+            # Regression: orientation=1 shipped portrait while the spec said landscape.
+            self.assertIn("window/handheld/orientation=0", godot_text)
+            self.assertIn("config/quit_on_go_back=false", godot_text)
             presets = (project / "godot" / "export_presets.cfg").read_text()
             self.assertIn('platform="Android"', presets)
             spec = json.loads((project / "project.json").read_text())

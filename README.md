@@ -11,37 +11,95 @@ specialist subagents, and shared skills. Other compatible agents can call
 optional project-scoped MCP tools. MCP does not automatically give an agent
 LopoDev orchestration or native specialist delegation.
 
-## Quick start
+## Install
 
-Requirements: Python 3.12+, Godot for runtime/build checks, and Blender for asset
-authoring. OpenCode, Kilo, Cursor, and the MCP SDK are optional integrations.
+Homebrew (macOS/Linux). The formula lives in this repository, so tap it by URL.
+Until the first tagged release is published, install the development head:
 
 ```sh
-./bin/lopodev --version
-./bin/lopodev doctor
-./bin/lopodev install opencode --project /path/to/workspace --dry-run
-./bin/lopodev install opencode --project /path/to/workspace
+brew tap rohan-murmu/lopodev https://github.com/rohan-murmu/lopodev
+brew install --HEAD rohan-murmu/lopodev/lopodev     # after a release: brew install lopodev
 ```
 
-Other project adapters: `lopodev install kilo`, `lopodev install cursor`, or
-`lopodev install mcp`. Installers preserve existing paths, support `--dry-run`,
-and do not modify user-level agent configuration. MCP setup writes a registration
-example which you manually merge into the selected client's MCP settings. Remove
-LopoDev-managed, unchanged files using `lopodev uninstall <target>`.
+From a checkout:
 
-`bin/lopodev` is the only launcher. After install, OpenCode discovers `.opencode/agents`,
-`.opencode/commands`, and `.opencode/skills`; Kilo and Cursor share
-`resources/skills` through `.agents/skills`.
+```sh
+git clone https://github.com/rohan-murmu/lopodev && cd lopodev
+bin/lopodev install-cli            # symlinks ~/.local/bin/lopodev
+```
 
-## Homebrew status
+## First run
 
-The canonical repository is confirmed as `https://github.com/rohan-murmu/lopodev`
-and the local Git remote points there. The repository ships an MIT `LICENSE`,
-but no release tag or archive is published yet. Publish a
-versioned archive before claiming public `brew tap` availability; the formula
-helper computes the checksum from that exact archive. See
-[`docs/installation.md`](docs/installation.md). A formula in this repository
-alone is not a tap.
+```sh
+lopodev setup                                   # once per user: pinned MCP servers + skills
+lopodev new --workspace ~/games --slug sky_runner --title "Sky Runner"
+lopodev doctor --project ~/games                # live: skill discovery + MCP connectivity
+cd ~/games && lopodev open                      # OpenCode with the lopodev lead agent
+```
+
+`lopodev setup` installs, into `~/.local/share/lopodev` only (no global Python
+or Node changes), pinned and checksum-verified:
+
+| Integration | Pin | Used by |
+|---|---|---|
+| [MCP for Blender](https://github.com/ahujasid/mcp-for-blender) | `mcp-for-blender==2.2.4` (isolated venv) + Blender addon | modeling, animation, level-design |
+| [Godot MCP](https://github.com/Coding-Solo/godot-mcp) | `@coding-solo/godot-mcp@0.1.1` (isolated npm prefix) | gameplay, ui, level-design, qa-release, optimization |
+| [Code Map](https://github.com/JordanCoin/codemap) | `codemap` 4.6.0 (`brew`/`go`; an existing install is kept) | lead, gameplay, ui, qa-release, optimization, level-design |
+| [blender-skills](https://github.com/EL4CTEO/blender-skills), [godot-skills](https://github.com/vl4dt/godot-skills), [blender-LPM-skill](https://github.com/ozanzeng/blender-LPM-skill), [blender-agent-skills](https://github.com/oh-ashen-one/blender-agent-skills) | commit + SHA-256 in `resources/integrations.json`; curated subset (31 skills) | per-agent skill lists |
+
+`lopodev install opencode` runs `setup` first (skip with `--no-integrations` or
+`LOPODEV_NO_INTEGRATIONS=1`), links skills, and merges MCP servers, per-agent
+tool access and the approval policy into `opencode.json` key by key: your own
+keys are preserved, the original is backed up to `.lopodev/backups/`, and
+`lopodev uninstall opencode` removes only keys LopoDev wrote and you did not
+edit. Running OpenCode sessions keep their old tools until you restart them;
+LopoDev never restarts them. `lopodev doctor` proves activation by asking
+OpenCode which skills it discovers and which MCP servers connect;
+`lopodev doctor --probe` additionally makes one real read-only tool call per server.
+
+Other adapters: `lopodev install kilo`, `lopodev install cursor`,
+`lopodev install mcp` (prints a registration for any MCP client).
+
+## Approval mode
+
+```sh
+lopodev approval            # show (default: auto)
+lopodev approval manual     # ask before every edit and non-read-only command
+lopodev approval auto
+```
+
+`auto` lets agents edit and run ordinary commands. In both modes destructive,
+publishing and credential commands (`rm -rf`, `git push`, `git reset --hard`,
+`gh release`, signing tools, `curl | sh`, ...) still ask, and recording a human
+gate decision (`pipeline_state.py approve|reject|reopen`) always prompts: tool
+approval is never gate approval. Mode changes are logged to `.lopodev/events.jsonl`.
+
+## Knowledge that carries across games
+
+```sh
+lopodev knowledge search touch joystick look --engine-version 4.6.1 --platform android
+lopodev knowledge apply godot-mobile-touch-controls --project projects/my_game --godot-dir projects/my_game/godot
+lopodev context --project projects/my_game --task T3   # bounded brief for one task
+```
+
+Recipes are versioned JSON with artifacts, compatibility, failure modes and
+validation evidence; only `verify --run` makes one `verified`. Shipped recipes
+(multitouch controls, screen router, safe area) are verified by headless Godot
+4.6.1 tests. See [`docs/knowledge.md`](docs/knowledge.md).
+
+## Worlds, screens and controls
+
+New specs (`design_version: 2`) must define the core loop, touch controls per
+genre, screens and the navigation graph; `tools/validate_spec.py` rejects
+unreachable screens, dead ends, dead buttons, missing pause or retry, shared
+touch zones, tiny buttons, and an orientation that differs from `project.godot`.
+Worlds are planned, resolved and validated before assembly:
+
+```sh
+lopodev world generate docs/world_plan.json --out docs/world_plan.resolved.json
+lopodev world validate docs/world_plan.resolved.json --map
+python3 tools/godot/world_to_tscn.py docs/world_plan.resolved.json --godot-dir godot --out scenes/World.tscn
+```
 
 ## Requirements
 
@@ -65,7 +123,15 @@ tools/godot/check_android.sh
 tools/godot/export_android.sh projects/<slug>/godot
 tools/godot/export_android.sh projects/<slug>/godot --release
 tools/godot/export_android.sh projects/<slug>/godot --format aab --release
+lopodev android-export projects/<slug>/godot --install-run   # + install/launch when a device is attached
 ```
+
+New projects get an `Android` (APK) and an `Android AAB` (Gradle) preset;
+`--format aab` picks the latter. Each export verifies size, zip structure,
+signature, and for APKs the packaged manifest (package, versionCode, SDK levels,
+launcher) against the preset, then writes a JSON report next to the logs.
+Device launch, interaction and performance stay `NOT RUN` unless a device was
+actually used.
 
 The same workflow is available as `lopodev android-export` and the optional
 `lopodev_android_export` MCP tool. Release AAB export requires a release
@@ -74,16 +140,6 @@ keystore via `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`,
 `GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD`, plus Godot's Gradle Android template.
 See [`docs/android-export.md`](docs/android-export.md) for signing, verification,
 and the difference between export evidence and device evidence.
-
-## Install the CLI
-
-```bash
-bin/lopodev install-cli
-lopodev --version
-```
-
-This links `lopodev` into `~/.local/bin` without overwriting an existing
-non-symlink. Use `lopodev install-cli /another/bin` to choose the directory.
 
 ## Repository layout
 
@@ -95,15 +151,17 @@ adapters/cursor/rules|agents/
 tools/ bin/ docs/ templates/
 ```
 
+`Formula/lopodev.rb` is generated by `tools/homebrew_formula.py` (CI checks it),
+`resources/integrations.json` pins third-party integrations, and
+`resources/knowledge/` holds bundled recipes with their artifacts, checks and evidence.
 `.opencode/`, `.kilo/`, `.cursor/`, and `.agents/skills/` are generated install
 targets and are not edited by hand. `tools/install_lopodev.sh` is a deprecated
 wrapper around `lopodev install opencode` and never overwrites existing files.
 Restart the agent in that workspace after installation.
 
-## Quick start
+## Planning a game
 
 ```bash
-# New game scaffold
 lopodev new --slug sky_runner --title "Sky Runner"
 lopodev open
 ```
@@ -198,6 +256,9 @@ projects/<slug>/
 - `docs/agent-orchestration.md` - delegation and resume behavior.
 - `docs/dependency-map.md` - source dependency map and cleanup findings.
 - `docs/integrations.md` - OpenCode, Kilo, Cursor and MCP support levels.
+- `docs/knowledge.md` - knowledge scopes, schema, statuses and commands.
+- `docs/installation.md` - Homebrew, setup, upgrade, uninstall, release procedure.
+- `CONTRIBUTING.md` - adding agents, skills, integrations and knowledge.
 - `docs/mcp.md` - optional project-scoped MCP server.
 - `docs/android-export.md` - APK/AAB export, signing and verification limits.
 - `docs/installation.md` - CLI, prerequisites and Homebrew release workflow.
@@ -217,3 +278,12 @@ projects/<slug>/
   generation works without it.
 - The visual gate requires a display and human/model inspection; it cannot be
   replaced by a headless screenshot.
+- Bundled knowledge recipes are verified with synthetic touch events in headless
+  Godot, not on a phone.
+- AAB manifests are not inspected (protobuf; `bundletool` is not bundled).
+- Code Map's pin is not enforced on an existing user installation; `doctor`
+  reports the installed version.
+- Approval modes are rendered for OpenCode. Kilo and Cursor keep their own
+  permission settings.
+- The Homebrew tap is the formula in this repository; no release is published
+  yet, so only `--HEAD` installs work until the first `v*` tag.
