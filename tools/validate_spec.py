@@ -18,8 +18,10 @@ KNOWN_SKILLS = {
     "godot-gameplay",
     "game-qa",
     # LopoDev shared procedures.
-    "mobile-low-poly",
+    "mobile-game",
+    "mobile-low-poly",  # pre-0.3 name of mobile-game, kept for old specs
     "lopodev-workflow",
+    "asset-intelligence",
 }
 try:
     # Vendored skills installed by `lopodev setup` are valid task skills too.
@@ -99,12 +101,20 @@ def validate(data: dict, project_dir: Path | None = None) -> list[str]:
             if isinstance(asset_id, str):
                 check(asset_id not in asset_ids, f"duplicate asset id: {asset_id}", errors)
                 asset_ids.add(asset_id)
+            if asset.get("source") in ("discover", "custom", "derived") or ("class" in asset and "source" not in asset):
+                # Discovery entries are requirements; license and budgets are resolved by
+                # `lopodev assets` and recorded in the asset manifest, not guessed here.
+                sys.path.insert(0, str(Path(__file__).resolve().parent))
+                import asset_requirements
+                for error in asset_requirements.validate_requirement(asset_requirements.normalize(asset)):
+                    errors.append(f"{prefix}: {error}")
+                continue
             for key in ("kind", "source", "license"):
                 check(isinstance(asset.get(key), str) and bool(asset.get(key)),
                       f"{prefix}.{key} must be non-empty", errors)
             budget = asset.get("budget_triangles")
-            check(isinstance(budget, int) and 1 <= budget <= 100000,
-                  f"{prefix}.budget_triangles must be 1..100000", errors)
+            check(isinstance(budget, int) and 1 <= budget <= 500000,
+                  f"{prefix}.budget_triangles must be 1..500000", errors)
             check(isinstance(asset.get("animated"), bool),
                   f"{prefix}.animated must be boolean", errors)
             if asset.get("source") not in ("procedural", "generated-in-repo"):
@@ -320,7 +330,11 @@ def validate_design(data: dict) -> list[str]:
         check(isinstance(controls.get("scheme"), str) and bool(controls.get("scheme")),
               "controls.scheme must name the control layout (e.g. twin-stick, tap, drag)", errors)
         touch = controls.get("touch")
-        check(isinstance(touch, list) and touch, "controls.touch must list the touch controls", errors)
+        if mobile.get("touch_input") or touch is not None:
+            check(isinstance(touch, list) and touch, "controls.touch must list the touch controls", errors)
+        else:
+            check(bool(controls.get("keyboard") or controls.get("gamepad")),
+                  "desktop controls must list `keyboard` or `gamepad` bindings", errors)
         seen: set[str] = set()
         zones: dict[str, str] = {}
         for index, control in enumerate(touch if isinstance(touch, list) else []):

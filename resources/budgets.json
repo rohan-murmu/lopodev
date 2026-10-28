@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "description": "Default per-asset budgets by target platform. Any art style; project.json values override these.",
+  "profiles": {
+    "mobile": {
+      "static_prop": 5000, "modular_environment": 8000, "animated_prop": 5000,
+      "skeletal_character": 15000, "procedural_element": 1500,
+      "texture_max_px": 2048, "max_scene_triangles": 300000
+    },
+    "desktop": {
+      "static_prop": 50000, "modular_environment": 80000, "animated_prop": 50000,
+      "skeletal_character": 60000, "procedural_element": 10000,
+      "texture_max_px": 4096, "max_scene_triangles": 5000000
+    }
+  }
+}

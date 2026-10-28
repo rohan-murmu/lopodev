@@ -21,23 +21,36 @@
   "assets": [
     {
       "id": "sm_example_prop",
-      "kind": "prop",
-      "source": "procedural",
-      "license": "generated-in-repo",
+      "class": "static_prop",
+      "source": "discover",
+      "role": "supply crate",
+      "terms": [
+        "crate",
+        "box"
+      ],
+      "size_m": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "collision": "box",
       "budget_triangles": 2000,
-      "animated": false,
-      "brief": "Describe dimensions, silhouette, palette, and use."
+      "mandatory": true,
+      "fallbacks": [
+        "procedural:box"
+      ],
+      "brief": "Describe silhouette, palette, scale and gameplay use; discovery fills provider, license and files."
     }
   ],
   "tasks": [
     {
       "id": "T1",
-      "title": "Generate and validate the first prop",
+      "title": "Resolve, import and validate the assets",
       "skills": [
-        "blender-modeling"
+        "asset-intelligence"
       ],
       "depends_on": [],
-      "verify": "python3 tools/blender/validate_asset.py projects/example_game/godot/assets/models/sm_example_prop.glb --require-material",
+      "verify": "lopodev assets validate --project projects/example_game",
       "status": "planned",
       "owner": "modeling"
     },
@@ -112,8 +125,8 @@
     "touch_input": true,
     "renderer": "gl_compatibility",
     "budget": {
-      "draw_calls": 80,
-      "triangles_visible": 60000,
+      "draw_calls": 150,
+      "triangles_visible": 300000,
       "texture_max_px": 2048
     }
   },
@@ -285,5 +298,6 @@
       }
     ]
   },
-  "world_plan": "projects/example_game/docs/world_plan.json"
+  "world_plan": "projects/example_game/docs/world_plan.json",
+  "art_style": "stylized"
 }

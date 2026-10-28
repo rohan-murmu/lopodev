@@ -12,8 +12,12 @@ for Godot assembly (tools/godot/world_to_tscn.py).
   python3 tools/world_plan.py generate plan.json --out resolved.json
   python3 tools/world_plan.py validate resolved.json [--report report.json] [--map]
 
-Terrain height is not modeled: vertical placement (floating/sunken props) is
-checked in Godot after assembly, not here.
+Optional plan features: `terrain` (deterministic value-noise heightfield;
+placements get `y` and rules can set `max_slope_deg`), `exclusions` (circles or
+boxes nothing collidable may enter), scatter `"distribution": "poisson"`
+(blue-noise spacing), `enemy_spawns` + `enemy_radius` (enemies must reach the
+player), `sightlines` (must stay unobstructed) and `combat_zones` (bounded
+cover). Overlap queries use a spatial hash, so dense foliage stays fast.
 """
 
 from __future__ import annotations
@@ -27,7 +31,117 @@ from collections import Counter, deque
 from pathlib import Path
 
 DEFAULTS = {"cell_size": 0.5, "player_radius": 0.4, "spawn_clearance": 2.0,
-            "objective_clearance": 1.0}
+            "objective_clearance": 1.0, "enemy_radius": 0.5}
+
+
+class SpatialHash:
+    """Uniform grid of circles for fast neighbor queries."""
+
+    def __init__(self, cell: float):
+        self.cell = max(cell, 0.25)
+        self.buckets: dict[tuple[int, int], list[dict]] = {}
+
+    def key(self, x: float, z: float) -> tuple[int, int]:
+        return int(math.floor(x / self.cell)), int(math.floor(z / self.cell))
+
+    def add(self, item: dict) -> None:
+        self.buckets.setdefault(self.key(*item["pos"]), []).append(item)
+
+    def near(self, x: float, z: float, reach: float):
+        span = int(math.ceil(reach / self.cell))
+        cx, cz = self.key(x, z)
+        for i in range(cx - span, cx + span + 1):
+            for j in range(cz - span, cz + span + 1):
+                yield from self.buckets.get((i, j), [])
+
+
+# ---------------------------------------------------------------- terrain
+
+def _lattice(seed: int, i: int, j: int) -> float:
+    value = (i * 374761393 + j * 668265263 + seed * 2147483647) & 0xFFFFFFFF
+    value = ((value ^ (value >> 13)) * 1274126177) & 0xFFFFFFFF
+    return (value ^ (value >> 16)) / 0xFFFFFFFF
+
+
+def height(plan: dict, x: float, z: float) -> float:
+    """Deterministic terrain height in meters (0 for flat or absent terrain)."""
+    terrain = plan.get("terrain") or {}
+    if terrain.get("type", "flat") == "flat":
+        return 0.0
+    amplitude, scale = float(terrain.get("amplitude", 1.5)), float(terrain.get("scale", 16.0))
+    seed = int(terrain.get("seed", plan.get("seed", 0)))
+    total, weight = 0.0, 0.0
+    for octave in range(int(terrain.get("octaves", 2))):
+        frequency = (2 ** octave) / scale
+        u, v = x * frequency, z * frequency
+        i, j = math.floor(u), math.floor(v)
+        fu, fv = u - i, v - j
+        su, sv = fu * fu * (3 - 2 * fu), fv * fv * (3 - 2 * fv)
+        a, b = _lattice(seed + octave, i, j), _lattice(seed + octave, i + 1, j)
+        c, d = _lattice(seed + octave, i, j + 1), _lattice(seed + octave, i + 1, j + 1)
+        sample = (a + (b - a) * su) + ((c + (d - c) * su) - (a + (b - a) * su)) * sv
+        total += (sample - 0.5) * 2 * (0.5 ** octave)
+        weight += 0.5 ** octave
+    flatten = terrain.get("flatten", [])  # [{"pos": [x, z], "radius": r}] e.g. spawns, arenas
+    factor = 1.0
+    for zone in flatten:
+        distance = math.hypot(x - zone["pos"][0], z - zone["pos"][1])
+        factor = min(factor, max(0.0, min(1.0, (distance - zone["radius"]) / max(zone.get("falloff", 4.0), 0.01))))
+    return round(amplitude * total / weight * factor, 4)
+
+
+def slope_deg(plan: dict, x: float, z: float, step: float = 0.5) -> float:
+    dx = (height(plan, x + step, z) - height(plan, x - step, z)) / (2 * step)
+    dz = (height(plan, x, z + step) - height(plan, x, z - step)) / (2 * step)
+    return math.degrees(math.atan(math.hypot(dx, dz)))
+
+
+def in_exclusion(plan: dict, x: float, z: float, radius: float) -> str | None:
+    for zone in plan.get("exclusions", []):
+        if "circle" in zone:
+            cx, cz, r = zone["circle"]
+            if math.hypot(x - cx, z - cz) < r + radius:
+                return zone.get("id", "exclusion")
+        else:
+            (x0, z0), (x1, z1) = zone["min"], zone["max"]
+            if x0 - radius <= x <= x1 + radius and z0 - radius <= z <= z1 + radius:
+                return zone.get("id", "exclusion")
+    return None
+
+
+def poisson_points(rng: random.Random, region: tuple, spacing: float, limit: int, k: int = 20):
+    """Bridson-style blue-noise sample stream inside a rectangle."""
+    rx0, rz0, rx1, rz1 = region
+    cell = spacing / math.sqrt(2)
+    grid: dict[tuple[int, int], tuple[float, float]] = {}
+
+    def fits(x: float, z: float) -> bool:
+        gx, gz = int(x / cell), int(z / cell)
+        for i in range(gx - 2, gx + 3):
+            for j in range(gz - 2, gz + 3):
+                other = grid.get((i, j))
+                if other and math.hypot(other[0] - x, other[1] - z) < spacing:
+                    return False
+        return True
+
+    first = (rng.uniform(rx0, rx1), rng.uniform(rz0, rz1))
+    grid[(int(first[0] / cell), int(first[1] / cell))] = first
+    active, produced = [first], 0
+    yield first
+    while active and produced < limit:
+        index = rng.randrange(len(active))
+        ox, oz = active[index]
+        for _ in range(k):
+            angle, distance = rng.uniform(0, 2 * math.pi), rng.uniform(spacing, 2 * spacing)
+            x, z = ox + math.cos(angle) * distance, oz + math.sin(angle) * distance
+            if rx0 <= x <= rx1 and rz0 <= z <= rz1 and fits(x, z):
+                grid[(int(x / cell), int(z / cell))] = (x, z)
+                active.append((x, z))
+                produced += 1
+                yield (x, z)
+                break
+        else:
+            active.pop(index)
 
 
 def load(path: Path) -> dict:
@@ -80,7 +194,12 @@ def generate(plan: dict) -> dict:
     """Resolve scatter rules into explicit placements, deterministically."""
     rng = random.Random(plan.get("seed", 0))
     x0, z0, x1, z1 = bounds(plan)
-    placed = [dict(item, source="authored") for item in plan.get("obstacles", [])]
+    placed = [dict(item, source="authored", y=height(plan, *item["pos"])) for item in plan.get("obstacles", [])]
+    index = SpatialHash(2.0)
+    for item in placed:
+        index.add(item)
+    largest = max([float(item.get("radius", 0.5)) for item in placed] +
+                  [float(rule.get("radius", 0.5)) for rule in plan.get("scatter", [])] + [0.5])
     report = []
     for rule_index, rule in enumerate(plan.get("scatter", [])):
         rule_rng = random.Random(rng.randrange(1 << 30) + rule_index)
@@ -89,38 +208,67 @@ def generate(plan: dict) -> dict:
         radius, spacing = float(rule.get("radius", 0.5)), float(rule.get("min_spacing", 0.0))
         avoid = rule.get("avoid", ["paths", "spawns", "objectives", "landmarks"])
         zones = keepouts(plan, avoid)
+        max_slope = rule.get("max_slope_deg")
         cluster = rule.get("cluster")
         centers = [(rule_rng.uniform(rx0, rx1), rule_rng.uniform(rz0, rz1))
                    for _ in range(int(cluster["centers"]))] if cluster else []
         count, attempts = 0, 0
         target = int(rule["count"])
+        rejected: Counter = Counter()
+        poisson = poisson_points(rule_rng, (rx0, rz0, rx1, rz1), max(2 * radius + spacing, 0.1), target * 60) \
+            if rule.get("distribution") == "poisson" else None
         while count < target and attempts < target * 60:
             attempts += 1
-            if centers:
+            if poisson is not None:
+                point = next(poisson, None)
+                if point is None:
+                    break
+                x, z = point
+            elif centers:
                 cx, cz = centers[attempts % len(centers)]
                 spread = float(cluster.get("spread", 5.0))
                 x, z = rule_rng.gauss(cx, spread), rule_rng.gauss(cz, spread)
             else:
                 x, z = rule_rng.uniform(rx0, rx1), rule_rng.uniform(rz0, rz1)
             if not (rx0 + radius <= x <= rx1 - radius and rz0 + radius <= z <= rz1 - radius):
+                rejected["region"] += 1
                 continue
             if not (x0 + radius <= x <= x1 - radius and z0 + radius <= z <= z1 - radius):
+                rejected["bounds"] += 1
                 continue
             if any(math.hypot(x - kx, z - kz) < kr + radius for kx, kz, kr in zones):
+                rejected["keepout"] += 1
                 continue
+            if rule.get("collision", "static") != "none" or "exclusions" in avoid:
+                if in_exclusion(plan, x, z, radius):
+                    rejected["exclusion"] += 1
+                    continue
             if "paths" in avoid and any(path_distance(x, z, path) < path.get("width", 2.0) / 2 + radius
                                         for path in plan.get("paths", [])):
+                rejected["path"] += 1
+                continue
+            if max_slope is not None and slope_deg(plan, x, z) > float(max_slope):
+                rejected["slope"] += 1
                 continue
             if any(math.hypot(x - other["pos"][0], z - other["pos"][1])
-                   < radius + float(other.get("radius", 0.5)) + spacing for other in placed):
+                   < radius + float(other.get("radius", 0.5)) + spacing
+                   for other in index.near(x, z, radius + largest + spacing)):
+                rejected["spacing"] += 1
                 continue
-            placed.append({"id": f"{rule['asset']}_{count + 1:03d}", "asset": rule["asset"],
-                           "pos": [round(x, 3), round(z, 3)], "radius": radius,
-                           "rotation": round(rule_rng.uniform(0, 360), 1) if rule.get("random_rotation", True) else 0.0,
-                           "scale": round(rule_rng.uniform(*rule.get("scale_range", [1.0, 1.0])), 3),
-                           "collision": rule.get("collision", "static"), "source": f"scatter[{rule_index}]"})
+            item = {"id": f"{rule['asset']}_{count + 1:03d}", "asset": rule["asset"],
+                    "pos": [round(x, 3), round(z, 3)], "y": height(plan, x, z), "radius": radius,
+                    "rotation": round(rule_rng.uniform(0, 360), 1) if rule.get("random_rotation", True) else 0.0,
+                    "scale": round(rule_rng.uniform(*rule.get("scale_range", [1.0, 1.0])), 3),
+                    "collision": rule.get("collision", "static"), "source": f"scatter[{rule_index}]"}
+            if max_slope is not None:
+                item["max_slope_deg"] = float(max_slope)
+            if "blocks_sight" in rule:
+                item["blocks_sight"] = bool(rule["blocks_sight"])
+            placed.append(item)
+            index.add(item)
             count += 1
-        report.append({"asset": rule["asset"], "requested": target, "placed": count, "attempts": attempts})
+        report.append({"asset": rule["asset"], "requested": target, "placed": count, "attempts": attempts,
+                       "rejected": dict(rejected)})
     resolved = {key: value for key, value in plan.items() if key not in ("obstacles", "scatter")}
     resolved.update({"resolved": True, "placements": placed, "generation": report,
                      "source_plan": {"seed": plan.get("seed", 0), "scatter": plan.get("scatter", []),
@@ -130,10 +278,11 @@ def generate(plan: dict) -> dict:
 
 # ---------------------------------------------------------------- validation
 
-def blocked_grid(plan: dict, placements: list[dict]) -> tuple[list[list[bool]], float]:
+def blocked_grid(plan: dict, placements: list[dict],
+                 inflate: float | None = None) -> tuple[list[list[bool]], float]:
     x0, z0, x1, z1 = bounds(plan)
     cell = setting(plan, "cell_size")
-    inflate = setting(plan, "player_radius")
+    inflate = setting(plan, "player_radius") if inflate is None else inflate
     columns, rows = max(1, int(math.ceil((x1 - x0) / cell))), max(1, int(math.ceil((z1 - z0) / cell)))
     grid = [[False] * columns for _ in range(rows)]
     for item in placements:
@@ -143,6 +292,12 @@ def blocked_grid(plan: dict, placements: list[dict]) -> tuple[list[list[bool]], 
         for row in range(max(0, int((cz - reach - z0) / cell)), min(rows, int((cz + reach - z0) / cell) + 1)):
             for column in range(max(0, int((cx - reach - x0) / cell)), min(columns, int((cx + reach - x0) / cell) + 1)):
                 if math.hypot(x0 + (column + 0.5) * cell - cx, z0 + (row + 0.5) * cell - cz) < reach:
+                    grid[row][column] = True
+    walkable_slope = (plan.get("terrain") or {}).get("max_walkable_slope_deg")
+    if walkable_slope is not None and (plan.get("terrain") or {}).get("type", "flat") != "flat":
+        for row in range(rows):
+            for column in range(columns):
+                if slope_deg(plan, x0 + (column + 0.5) * cell, z0 + (row + 0.5) * cell, cell) > walkable_slope:
                     grid[row][column] = True
     for blocker in plan.get("blockers", []):  # walls/water as axis-aligned boxes
         (bx0, bz0), (bx1, bz1) = blocker["min"], blocker["max"]
@@ -203,11 +358,14 @@ def validate(plan: dict) -> dict:
 
     collidable = [p for p in placements if p.get("collision", "static") in ("static", "destructible")]
     overlaps = []
-    for i, a in enumerate(collidable):
-        for b in collidable[i + 1:]:
+    index = SpatialHash(2.0)
+    largest = max([float(p.get("radius", 0.5)) for p in collidable] + [0.5])
+    for a in collidable:
+        for b in index.near(a["pos"][0], a["pos"][1], float(a.get("radius", 0.5)) + largest):
             gap = math.hypot(a["pos"][0] - b["pos"][0], a["pos"][1] - b["pos"][1])
             if gap < float(a.get("radius", 0.5)) + float(b.get("radius", 0.5)) - 1e-6:
-                overlaps.append(f"{a['id']}~{b['id']}")
+                overlaps.append(f"{b['id']}~{a['id']}")
+        index.add(a)
     record("no_overlap", not overlaps, f"{len(overlaps)} overlaps: {overlaps[:8]}" if overlaps else "none")
 
     spawn_hits = [f"{p['id']}@{s['id']}" for s in plan.get("spawns", []) for p in collidable
@@ -261,10 +419,76 @@ def validate(plan: dict) -> dict:
                 crowded.append(item["id"])
         record("repetition", not crowded, f"{len(crowded)} crowded instances" if crowded else "varied")
 
+    if plan.get("exclusions"):
+        intruders = [f"{p['id']}@{zone}" for p in collidable
+                     if (zone := in_exclusion(plan, p["pos"][0], p["pos"][1], float(p.get("radius", 0.5))))]
+        record("exclusions_clear", not intruders, f"inside: {intruders[:8]}" if intruders else "clear")
+
+    steep = [f"{p['id']}={slope_deg(plan, *p['pos']):.0f}deg" for p in plan.get("placements", [])
+             if p.get("max_slope_deg") is not None and slope_deg(plan, *p["pos"]) > p["max_slope_deg"] + 1e-6]
+    if plan.get("terrain") and (plan["terrain"].get("type", "flat") != "flat"):
+        floating = [p["id"] for p in plan.get("placements", [])
+                    if abs(float(p.get("y", 0.0)) - height(plan, *p["pos"])) > 0.05]
+        record("on_terrain", not floating, f"not on ground: {floating[:8]}" if floating else "all grounded")
+        record("slope", not steep, f"too steep: {steep[:8]}" if steep else "within limits")
+
+    enemy_spawns = plan.get("enemy_spawns", [])
+    if enemy_spawns:
+        enemy_grid, _ = blocked_grid(plan, placements, setting(plan, "enemy_radius"))
+        player_cells = set()
+        for spawn in spawns:
+            player_cells |= flood(enemy_grid, to_cell(plan, spawn["pos"], cell))
+        stranded = []
+        for enemy in enemy_spawns:
+            region = flood(enemy_grid, to_cell(plan, enemy["pos"], cell))
+            if not region or not (region & player_cells):
+                stranded.append(enemy["id"])
+        record("enemy_navigation", not stranded and bool(player_cells),
+               f"cannot reach the player: {stranded}" if stranded else
+               f"{len(enemy_spawns)} enemy spawn(s) connected (radius {setting(plan, 'enemy_radius')} m)")
+
+    sight_blockers = [p for p in collidable if p.get("blocks_sight", True)]
+    blocked_lines = []
+    for line in plan.get("sightlines", []):
+        segment = {"points": [line["from"], line["to"]]}
+        hits = [p["id"] for p in sight_blockers if path_distance(p["pos"][0], p["pos"][1], segment)
+                < float(p.get("radius", 0.5))]
+        if hits:
+            blocked_lines.append(f"{line['id']} by {hits[:3]}")
+    if plan.get("sightlines"):
+        record("sightlines", not blocked_lines, "; ".join(blocked_lines) or f"{len(plan['sightlines'])} clear")
+
+    zone_problems = []
+    for zone in plan.get("combat_zones", []):
+        cells = [(r, c) for r in range(len(grid)) for c in range(len(grid[0]))
+                 if math.hypot(x0 + (c + 0.5) * cell - zone["center"][0],
+                               z0 + (r + 0.5) * cell - zone["center"][1]) <= zone["radius"]]
+        covered = sum(1 for r, c in cells if grid[r][c]) / max(1, len(cells))
+        if covered > zone.get("max_cover_ratio", 0.35):
+            zone_problems.append(f"{zone['id']} cover {covered:.0%} > {zone.get('max_cover_ratio', 0.35):.0%}")
+        if covered < zone.get("min_cover_ratio", 0.0):
+            zone_problems.append(f"{zone['id']} cover {covered:.0%} < {zone['min_cover_ratio']:.0%}")
+        if not any(cell_index in reachable for cell_index in cells):
+            zone_problems.append(f"{zone['id']} unreachable")
+    if plan.get("combat_zones"):
+        record("combat_zones", not zone_problems, "; ".join(zone_problems) or
+               f"{len(plan['combat_zones'])} zone(s) within cover limits and reachable")
+
+    components = 0
+    free = {(r, c) for r in range(len(grid)) for c in range(len(grid[0])) if not grid[r][c]}
+    islands = []
+    while free:
+        region = flood(grid, next(iter(free)))
+        free -= region
+        components += 1
+        islands.append(len(region))
+
     status = "PASS" if all(check["status"] == "PASS" for check in checks) else "FAIL"
     return {"status": status, "checks": checks,
             "metrics": {"instances": len(placements), "area_m2": area, "density_per_100m2": round(density, 2),
-                        "walkable_cells": len(reachable), "per_asset": dict(per_asset)}}
+                        "walkable_cells": len(reachable), "per_asset": dict(per_asset),
+                        "walkable_regions": components,
+                        "largest_unreached_region_cells": max([n for n in islands if n != len(reachable)] or [0])}}
 
 
 def ascii_map(plan: dict, width: int = 64) -> str:

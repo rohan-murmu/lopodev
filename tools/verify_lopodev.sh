@@ -36,6 +36,13 @@ check android "$ROOT/tools/godot/check_android.sh"
 check knowledge python3 "$ROOT/tools/knowledge.py" validate
 check spec_template python3 "$ROOT/tools/validate_spec.py" "$ROOT/templates/project.json" --no-file-checks
 check world_template python3 "$ROOT/tools/world_plan.py" validate "$ROOT/templates/world_plan.json"
+check asset_registry python3 "$ROOT/tools/asset_pipeline.py" providers
+# LopoDev is not tied to one art style; only legacy aliases may name the old skill.
+no_style_lock() {
+  ! git -C "$ROOT" grep --untracked -n -i -E "low[- ]?poly" -- . ':!resources/knowledge/evidence' \
+    | grep -v "pre-0.3 name"
+}
+check art_style_neutral no_style_lock
 check formula python3 "$ROOT/tools/homebrew_formula.py" --check "$ROOT/Formula/lopodev.rb" --license MIT
 check integrations "$ROOT/bin/lopodev" doctor --project "$ROOT" --no-live
 
@@ -45,12 +52,15 @@ if [[ ! -e "$ROOT/.opencode/agents/lopodev.md" ]]; then
 fi
 
 echo "== agents and commands =="
-config="$(cd "$ROOT" && opencode debug config 2>/dev/null)"
+# OpenCode truncates piped debug output at ~64 KB; a file gets all of it.
+config_file="$(mktemp)"
+(cd "$ROOT" && opencode debug config >"$config_file" 2>/dev/null)
 set +e
-python3 - "$config" <<'PY'
+python3 - "$config_file" <<'PY'
 import json
 import sys
-data = json.loads(sys.argv[1])
+with open(sys.argv[1], encoding="utf-8") as handle:
+    data = json.load(handle)
 assert data.get("default_agent") == "lopodev", data.get("default_agent")
 agents = data.get("agent") or {}
 commands = data.get("command") or {}
@@ -69,6 +79,7 @@ assert not missing_commands, f"missing commands: {sorted(missing_commands)}"
 print(f"AGENTS_OK={len(expected_agents)} COMMANDS_OK={len(expected_commands)}")
 PY
 config_rc=$?
+rm -f "$config_file"
 set -e
 if [[ $config_rc -ne 0 ]]; then
   echo "CHECK_opencode=FAIL" >&2

@@ -83,7 +83,7 @@ All five paths were exercised in a throwaway probe project:
   640x360 screenshot, confirming rendered output is inspectable.
 
 Renderer choice: `gl_compatibility` (OpenGL 3.3) is used because it was verified
-with this NVIDIA/X11 setup. Forward+ (Vulkan) is not required for low-poly work.
+with this NVIDIA/X11 setup. Forward+ (Vulkan) is not required for the current mobile-targeted work.
 
 ### Known environment warnings
 

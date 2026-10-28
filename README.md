@@ -87,6 +87,63 @@ validation evidence; only `verify --run` makes one `verified`. Shipped recipes
 (multitouch controls, screen router, safe area) are verified by headless Godot
 4.6.1 tests. See [`docs/knowledge.md`](docs/knowledge.md).
 
+## Start a game: the Game Brief
+
+The best first prompt is a filled Game Brief: title, pitch, genre, art style,
+theme, story, core loop, win/lose, platform, controls, world, characters,
+assets (including edits such as "water well -> witch well"), screens and
+scope. Blank fields are fine; LopoDev fills them from genre defaults and lists
+every guess as an assumption for you to approve at Gate A.
+
+```sh
+lopodev brief template > GAME_BRIEF.md        # fill it in
+lopodev brief check GAME_BRIEF.md             # missing essentials, contradictions
+lopodev new --workspace . --slug hex_hollow --title "Hex Hollow" --brief GAME_BRIEF.md
+```
+
+In OpenCode, `/new-game <brief or idea>` does the same. Examples:
+[`docs/examples/brief_witch_village.md`](docs/examples/brief_witch_village.md),
+[`docs/examples/brief_jungle_shooter.md`](docs/examples/brief_jungle_shooter.md);
+details in [`docs/game-brief.md`](docs/game-brief.md).
+
+## Assets: discover, don't model
+
+LopoDev gets assets the way a small studio does: it reuses openly licensed
+models, characters with ready-made animations, and materials, and assembles
+environments procedurally. Blender is kept for bounded processing (conversion,
+pivots, cleanup, decimation) and for custom models you ask for.
+
+```sh
+lopodev assets providers                                  # sources and status
+lopodev assets add-pack ~/Downloads/kenney_nature-kit.zip --provider kenney --name nature-kit --style stylized
+lopodev assets run --project projects/<slug>              # requirements -> select -> cache -> Godot -> credits -> validate
+```
+
+Sources: CC0 packs you download (Kenney, Quaternius, KayKit) and the official
+Poly Haven and ambientCG APIs. Licenses are a hard filter (unknown, NC and ND
+are never used; CC-BY needs attribution and lands in `CREDITS.md`). Characters
+are ranked by rig and animation coverage, and `lopodev assets import` plays
+every required clip in headless Godot. See [`docs/assets.md`](docs/assets.md).
+
+## Change, rig and animate any asset
+
+Downloaded assets are a starting point, not a limit. Blender can do anything
+to them: reshape, retexture, merge with other assets, rig and animate. The
+original stays untouched, and the result keeps the source's license and gets
+before/after images:
+
+```sh
+lopodev assets derive --project P --from sm_water_well --id sm_witch_well --script derive_witch_well.py --live
+lopodev assets rig --project P --from sm_villager_src --id sm_villager --mode humanoid --clip idle --clip walk
+lopodev assets rig --project P --from sm_witch_well --id sm_witch_well_anim --mode parts --clip "bucket_bob:Bucket:bob_z:-0.4:1.5"
+```
+
+With live mode (default when a display exists), Blender and Godot open on
+screen while LopoDev works and close when done; only windows LopoDev opened
+are ever closed ([`docs/live.md`](docs/live.md)). `lopodev android-test` runs
+the finished game on an Android emulator: install, launch, crash check,
+screenshots, tap.
+
 ## Worlds, screens and controls
 
 New specs (`design_version: 2`) must define the core loop, touch controls per
@@ -98,8 +155,14 @@ Worlds are planned, resolved and validated before assembly:
 ```sh
 lopodev world generate docs/world_plan.json --out docs/world_plan.resolved.json
 lopodev world validate docs/world_plan.resolved.json --map
-python3 tools/godot/world_to_tscn.py docs/world_plan.resolved.json --godot-dir godot --out scenes/World.tscn
+python3 tools/godot/world_to_tscn.py docs/world_plan.resolved.json --godot-dir godot \
+  --out scenes/World.tscn --asset-map assets/asset_map.json
 ```
+
+Plans support noise terrain with slope limits, Poisson-disk scatter, exclusion
+zones, enemy spawns, sightlines and combat-zone cover limits. The scene gets
+ground or heightfield collision, lighting and a NavigationRegion3D;
+`tools/godot/checks/nav_check.gd` bakes it and proves enemies reach the player.
 
 ## Requirements
 
@@ -257,6 +320,9 @@ projects/<slug>/
 - `docs/dependency-map.md` - source dependency map and cleanup findings.
 - `docs/integrations.md` - OpenCode, Kilo, Cursor and MCP support levels.
 - `docs/knowledge.md` - knowledge scopes, schema, statuses and commands.
+- `docs/assets.md` - asset sources, license policy, contracts, ranking, import, derive, rig, previews, worlds.
+- `docs/live.md` - live mode: visible Blender/Godot/emulator and what gets closed.
+- `docs/game-brief.md` - the structured first prompt.
 - `docs/installation.md` - Homebrew, setup, upgrade, uninstall, release procedure.
 - `CONTRIBUTING.md` - adding agents, skills, integrations and knowledge.
 - `docs/mcp.md` - optional project-scoped MCP server.
@@ -274,6 +340,14 @@ projects/<slug>/
   until a device or emulator is connected and inspected. A signed AAB is not
   Play Console acceptance.
 - iOS is not validated.
+- Asset selection uses provider metadata and inspected geometry, not image
+  understanding; thumbnails are recorded for a human or vision model to check.
+  Poly Haven models are photoscans that often exceed mobile triangle budgets:
+  use stylized CC0 packs for mobile games. Kenney, Quaternius and KayKit have no search
+  API, so their packs are downloaded by hand. Poly Pizza (needs an API key)
+  and OpenGameArt (no API, mixed licenses) have no adapter.
+- Animation retargeting between different skeletons is detected and reported
+  but not automated; LopoDev picks a character with a compatible clip set first.
 - Blender MCP requires the Blender addon/server to be running. Procedural CLI
   generation works without it.
 - The visual gate requires a display and human/model inspection; it cannot be

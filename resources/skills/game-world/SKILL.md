@@ -6,6 +6,22 @@ license: MIT
 
 # Game World
 
+**Procedural by default.** Write intent as `docs/world_plan.json`, let
+`lopodev world generate` place everything deterministically from the seed, and
+`lopodev world validate --map` check it. Plan keys: `bounds`, `seed`, `terrain`
+(`noise` heightfield, `max_walkable_slope_deg`, `flatten` zones), `spawns`,
+`enemy_spawns` + `enemy_radius`, `objectives`, `landmarks`, `paths`,
+`exclusions` (circles/boxes), `blockers`, `scatter` rules (`asset` = requirement
+id, `count`, `radius`, `min_spacing`, `distribution: poisson`, `cluster`,
+`max_slope_deg`, `collision`), `sightlines`, `combat_zones`
+(`max_cover_ratio`), `budgets`. Assemble with
+`python3 tools/godot/world_to_tscn.py <resolved.json> --godot-dir <dir> --out scenes/World.tscn --asset-map projects/<slug>/assets/asset_map.json`
+(ground or heightfield collision, sun, environment, NavigationRegion3D) and
+prove paths with
+`godot --headless --path <dir> --script res://.pipeline/nav_check.gd -- res://scenes/World.tscn`
+after copying `tools/godot/checks/nav_check.gd` to `<dir>/.pipeline/`. If
+validation fails, change parameters and regenerate; do not hand-move scatter.
+
 Assemble validated Blender assets into a runnable Godot scene. This skill owns
 the scene tree, transforms, lighting, camera, environment, collision, and spawn
 layout. It does not write gameplay systems beyond minimal scene setup.

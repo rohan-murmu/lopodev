@@ -1,10 +1,26 @@
 ---
 name: blender-animation
-description: Use when a game spec requires a rigged or animated low-poly asset, including looping prop motion, armature setup, action authoring in Blender, GLB animation export, and verification that Godot imported the animation channels.
+description: Use when a game spec requires a rigged or animated asset, including looping prop motion, armature setup, action authoring in Blender, GLB animation export, and verification that Godot imported the animation channels.
 license: MIT
 ---
 
 # Blender Animation
+
+**Role:** fallback. Characters come from `asset-intelligence` with their own
+clips when possible; the manifest's `animation_plan` lists the action -> clip
+map, compatible external clips and `missing` actions, and `lopodev assets
+import` proves playback in Godot. Use this skill only for a bounded rig,
+retarget or clip task that resolution could not satisfy. Start with
+`lopodev assets rig`:
+- `--mode transfer --donor <rigged id>` (skeleton, weights and clips from a
+  similar rigged asset);
+- `--mode humanoid` (Rigify basic human metarig with automatic weights);
+- `--mode parts` (rigid moving parts of props);
+- `--mode creature` (bone chains).
+
+Then refine in a derive script if the frames show problems. Matching bone names
+do not prove a retarget works: verify rest pose, orientation, root motion and
+playback in Godot.
 
 Author a reusable armature and named actions in Blender, export animation in the
 GLB, and prove the channels survive the Blender -> glTF -> Godot handoff.

@@ -14,7 +14,13 @@ game code during a QA run unless the lead explicitly asks for a repair pass.
 
 1. Read `AGENTS.md`, `GAME_SPEC.md`, `project.json`, `pipeline_state.json`,
    `ASSET_LICENSES.md`, and the expected gate list.
-2. Load the `game-qa` skill.
+2. Load the `game-qa` skill. Asset and world gates are independent checks:
+   `lopodev assets validate --project projects/<slug> --strict` (license,
+   integrity, import, rig, animation playback, collision),
+   `lopodev world validate <resolved.json>` (overlap, exclusions, slope,
+   reachability, enemy navigation, sightlines, combat zones) and the Godot
+   navigation bake `tools/godot/checks/nav_check.gd`. A NOT RUN mandatory check
+   is not a pass.
 3. Run every gate that applies, in order, and capture stdout/stderr and exit
    codes under `projects/<slug>/artifacts/logs/`:
    - generation and asset validation
@@ -44,6 +50,39 @@ game code during a QA run unless the lead explicitly asks for a repair pass.
 
 Return the report path, a compact gate table, measured evidence, and every
 `FAIL`/`NOT RUN` with its reason.
+
+## When you are invoked directly (`@qa-release ...`)
+
+You may be called without the lead's brief. Then you own the whole loop:
+
+1. Find the project: one `projects/*/project.json` means that project; several
+   means ask which (one question); none means say so and suggest `/new-game`.
+2. Run `lopodev context --project projects/<slug>` and read the gate state.
+   Routine, reversible work inside the current gate may proceed. Anything that
+   changes approved scope, deletes user work or revisits an approved gate needs
+   the user's explicit yes first.
+3. Record the request as a task:
+   `python3 tools/pipeline_state.py record-task --project projects/<slug> --id ADHOC-<short-name> --title "<request>" --status in_progress --owner qa-release`.
+4. Do it with the playbook below. Visual work runs visibly: `lopodev live mode`
+   is `auto` by default, so Blender/Godot open on screen and close when done
+   (`lopodev live stop` closes anything LopoDev left open).
+5. Verify with the commands in the playbook, look at the images it produced,
+   then close the task (`--status verified --verification "<command and result>"
+   --evidence <path>`) or record the blocker (`--status blocked`, `record-issue`).
+6. Out of scope? Say which agent owns it (`@modeling`, `@animation`,
+   `@level-design`, `@gameplay`, `@ui`, `@optimization`, `@qa-release`,
+   `@game-design`) and stop; never half-do another specialist's work.
+
+Report: what changed (paths), how it was verified (command + result), images to
+look at, and what is still NOT RUN.
+
+## Playbook
+
+| Request | Do this | Verify |
+|---|---|---|
+| "check everything" | `lopodev assets validate --project P --strict`, `lopodev world validate <resolved>`, Godot `nav_check.gd`, `tools/godot/validate.sh`, `tools/godot/smoke.sh`, `tools/godot/screenshot.sh` (inspect it), Linux export | each gate PASS/FAIL/NOT RUN recorded with `pipeline_state.py record-test` |
+| "test on Android" | `lopodev android-test --project P` | emulator report under `artifacts/android/`; physical device and performance stay NOT RUN |
+| "release" | `lopodev android-export <dir> --format aab --mode release` (signing env vars), `python3 tools/qa_report.py validate --project P` | signed artifact + report; Play Console acceptance NOT RUN |
 
 ## Context, knowledge, skills and tools
 

@@ -4,11 +4,15 @@ agent: lopodev
 ---
 Create a new project for: `$ARGUMENTS`.
 
+If the request is a filled Game Brief (`Genre:`, `Core loop:` lines) or the
+user can give one, prefer `/new-game`: a brief gives the planner a complete
+head start (`lopodev brief template`).
+
 1. Choose a lowercase snake_case slug and title. If the user did not provide
    enough information, state assumptions instead of asking about reversible
    details.
 2. Run
-   `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"`.
+   `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>" [--brief GAME_BRIEF.md]`.
 3. Run `python3 tools/validate_spec.py projects/<slug>/project.json` and
    `python3 tools/pipeline_state.py validate --project projects/<slug>`.
 4. Delegate to `game-design` with the full brief protocol. Require a complete

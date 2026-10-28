@@ -1,4 +1,4 @@
-"""Shared Blender helpers for deterministic low-poly asset generation.
+"""Shared Blender helpers for deterministic asset generation.
 
 Runs inside Blender (bpy/bmesh only). No third-party Python packages.
 """
@@ -170,7 +170,7 @@ def save_blend(path: str) -> None:
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(path))
 
 
-def export_glb(path: str, *, animations: bool = False) -> None:
+def export_glb(path: str, *, animations: bool = False, animation_mode: str = "ACTIONS") -> None:
     ensure_parent(path)
     kwargs = dict(
         filepath=os.path.abspath(path),
@@ -186,7 +186,7 @@ def export_glb(path: str, *, animations: bool = False) -> None:
     )
     if animations:
         kwargs.update(
-            export_animation_mode="ACTIONS",
+            export_animation_mode=animation_mode,
             export_force_sampling=True,
         )
     bpy.ops.export_scene.gltf(**kwargs)

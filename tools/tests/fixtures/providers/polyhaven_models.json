@@ -1,0 +1,11 @@
+{
+  "jungle_palm_01": {"name": "Jungle Palm 01", "type": 2, "categories": ["nature", "trees"],
+    "tags": ["palm", "tree", "tropical", "jungle"], "authors": {"Test Author": "All"},
+    "polycount": 1400, "dimensions": [1800, 5200, 1700], "max_resolution": [2048, 2048]},
+  "dense_palm_02": {"name": "Dense Palm 02", "type": 2, "categories": ["nature", "trees"],
+    "tags": ["palm", "tree"], "authors": {"Test Author": "All"},
+    "polycount": 250000, "dimensions": [2000, 6000, 2000], "max_resolution": [8192, 8192]},
+  "armchair_01": {"name": "Arm Chair 01", "type": 2, "categories": ["furniture"],
+    "tags": ["chair", "wood"], "authors": {"Someone": "All"}, "polycount": 5626,
+    "dimensions": [848, 765, 1065], "max_resolution": [4096, 4096]}
+}

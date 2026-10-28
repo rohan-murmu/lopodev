@@ -60,7 +60,7 @@ DEFAULT_BUDGET = 2000
 
 
 def build_skeleton_mesh() -> bpy.types.Object:
-    """Build low-poly skeleton mesh."""
+    """Build the skeleton mesh."""
     bone_mat = make_material("mat_skeleton_bone", SKELETON_COLORS["bone"],
                              roughness=MATERIAL_SETTINGS["bone"][0],
                              metallic=MATERIAL_SETTINGS["bone"][1])

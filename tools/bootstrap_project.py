@@ -78,8 +78,8 @@ def project_json(slug: str, title: str, godot_version: str,
             "touch_input": True,
             "renderer": "gl_compatibility",
             "budget": {
-                "draw_calls": 80,
-                "triangles_visible": 60000,
+                "draw_calls": 150,
+                "triangles_visible": 300000,
                 "texture_max_px": 2048,
             },
         },
@@ -192,7 +192,7 @@ gradle_build/export_format=0
 architectures/armeabi-v7a=false
 architectures/arm64-v8a=true
 architectures/x86=false
-architectures/x86_64=false
+architectures/x86_64=true
 version/code=1
 version/name="1.0"
 package/unique_name="com.lopodev.{slug}"
@@ -271,6 +271,8 @@ def main() -> int:
     parser.add_argument("--title", required=True)
     parser.add_argument("--godot-version", default="4.6.1")
     parser.add_argument("--blender-version", default="5.2.2")
+    parser.add_argument("--brief", type=Path,
+                        help="seed project.json, tasks and world plan from a Game Brief (templates/GAME_BRIEF.md)")
     parser.add_argument("--no-scaffold", action="store_true",
                         help="do not symlink tools/templates/AGENTS.md")
     args = parser.parse_args()
@@ -342,6 +344,17 @@ def main() -> int:
     write_if_absent(project / "godot" / "scenes" / "Main.tscn",
                     main_scene_scaffold(), created, skipped)
 
+    brief_result = None
+    if args.brief:
+        import game_brief
+        try:
+            brief_result = game_brief.write_scaffold(args.brief.expanduser().resolve(), project)
+        except (OSError, ValueError, KeyError) as exc:
+            warnings.append(f"game brief not applied: {exc}")
+        else:
+            created.append(brief_result["world_plan"])
+            warnings += [f"spec: {error}" for error in brief_result["errors"]]
+
     state_data = state.new_state(args.slug, args.title.strip(), str(workspace),
                                  str(project))
     state.save_state(str(project), state_data)
@@ -384,6 +397,7 @@ def main() -> int:
         "created": created,
         "skipped": skipped,
         "warnings": warnings,
+        "brief": brief_result,
         "next_step": (
             "Run game-planner, write GAME_SPEC.md and project.json, validate with "
             "tools/validate_spec.py, sync tasks with pipeline_state.py sync-spec, "

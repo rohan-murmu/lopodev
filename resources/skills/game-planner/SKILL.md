@@ -12,8 +12,13 @@ skill consumes.
 
 ## Required inputs
 
-- The user's request, target platform (default Linux desktop), and any hard
-  constraints.
+- The user's request, ideally as a **Game Brief** (`templates/GAME_BRIEF.md`;
+  `lopodev brief template`). If `projects/<slug>/docs/GAME_BRIEF.md` exists,
+  `project.json` was scaffolded from it (`lopodev brief scaffold`): refine that
+  draft instead of starting over, and resolve every entry in `assumptions`.
+  For a free-text request, map it onto the brief fields first and record each
+  guess in `assumptions`.
+- Target platform (the brief's `Platform`; default android) and hard constraints.
 - Existing repository state (`git status`, current `projects/`).
 - Available toolchain facts from `docs/environment-audit.md`.
 - If the project already exists, its `project.json`, `GAME_SPEC.md`, and prior
@@ -33,8 +38,15 @@ projects/<game_slug>/
 - `slug`, `title`, `summary`, `status`, `genre`, `target_platform`;
 - `engine` (`godot` + exact version), `blender` version;
 - `main_scene` (`res://scenes/PascalCase.tscn`);
-- `assets[]`: `id`, `kind`, `source` (`procedural` or licensed path),
-  `license`, `budget_triangles`, `animated`;
+- `assets[]`: asset *requirements*, discovered by default. Each entry has
+  `id`, `class` (`static_prop`, `skeletal_character`, `animated_prop`,
+  `modular_environment`, `procedural_element`, `material`, `hdri`), `role`,
+  `terms`, and when it matters `size_m`, `animations` (actions such as idle,
+  walk, run, shoot, hit, death), `collision`, `budget_triangles`, `mandatory`,
+  `fallbacks`. Use `"source": "procedural"` with `kind`/`license`/
+  `budget_triangles`/`animated` only for assets that must be modeled in
+  Blender. `python3 tools/asset_requirements.py --prompt "<prompt>"` prints a
+  starting list; set `art_style` (any style: `stylized`, `realistic`, `toon`, ...) once for the game;
 - `tasks[]`: `id`, `title`, `owner`, `skills[]`, `depends_on[]`, `verify`,
   `status` (`planned` for new work; legacy `pending` is accepted);
 - `acceptance[]`: `id`, `criterion`, `gate`, `evidence`;
@@ -53,7 +65,7 @@ Use `templates/project.json` as the starting shape and
    scene. If the request is ambiguous, choose the smallest defensible scope and
    record the assumption.
 4. Budget content: scene count, prop list, character list, animations, UI,
-   sounds. Respect the low-poly budgets in `AGENTS.md`.
+   sounds. Respect the platform budgets in `resources/budgets.json`.
 5. Break delivery into ordered tasks. Each task must have one owner skill, a
    concrete command or check, and a dependency list. No task may be "make it
    fun" without a measurable check.
@@ -115,7 +127,8 @@ Pass criteria:
 - schema checks exit 0;
 - every task has at least one `verify` command and a known skill owner;
 - `main_scene` is a valid `res://...tscn` path;
-- every asset has a license/source and triangle budget;
+- every asset is a valid requirement (`lopodev assets requirements`) or a
+  Blender asset with a license/source and triangle budget;
 - acceptance criteria name a gate and an evidence path;
 - the first milestone has at least one runtime and one visual criterion when
   the deliverable is visual.
@@ -136,5 +149,6 @@ Pass criteria:
 ## Handoff
 
 Report the exact paths written and the ordered task list. The next skill is
-`blender-modeling` unless the project reuses already validated assets, in which
-case go to `game-world`.
+`asset-intelligence` (discovery, licensing, import). `blender-modeling` follows
+only for assets marked `"source": "procedural"` or for processing tasks the
+asset stage requests. `game-world` can plan the world in parallel.

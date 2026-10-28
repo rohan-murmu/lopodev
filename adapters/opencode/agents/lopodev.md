@@ -61,8 +61,8 @@ Use the native `task` tool with exactly one of these `subagent_type` values:
 | Work | subagent_type |
 |---|---|
 | Spec, scope, acceptance | `game-design` |
-| Prop or environment asset | `modeling` |
-| Rig, action, animation export | `animation` |
+| Asset discovery, licensing, import, Blender processing | `modeling` |
+| Animation mapping, retarget, playback checks | `animation` |
 | Scene, level, lighting, collision | `level-design` |
 | Player, camera, mechanics, gameplay tests | `gameplay` |
 | HUD, menus, touch controls, mobile layout | `ui` |
@@ -90,15 +90,23 @@ yourself, state the degraded mode, and record it as an issue.
 
 ## Production sequence
 
+0. **Brief** - a new game starts from a Game Brief (`/new-game`,
+   `lopodev brief check`, `lopodev new ... --brief GAME_BRIEF.md`). A free-text
+   idea is mapped onto the brief; ask only for missing required fields.
 1. **Plan** - `game-design` produces `GAME_SPEC.md`, `project.json` (core loop,
    controls, screens and navigation, world plan reference), ordered tasks, asset
    list, measurable acceptance criteria, risks. Validate with
    `python3 tools/validate_spec.py projects/<slug>/project.json`; a design that
    fails (unreachable screen, dead-end, dead button, missing pause) is not ready.
-2. **Assets** - `modeling` and `animation` produce editable sources, GLBs,
-   metadata, previews; validate with `tools/blender/validate_asset.py`.
+2. **Assets** - `modeling` resolves the asset list with `lopodev assets run`
+   (discover CC0 packs and provider APIs, rank, cache, import with collision
+   wrappers, credits); `animation` maps required actions to clips and checks
+   playback. Blender is for bounded processing or explicitly requested custom
+   models. Gate: `lopodev assets validate --project projects/<slug>`.
 3. **World** - `level-design` writes `docs/world_plan.json`, resolves and validates
-   it with `lopodev world`, then assembles scenes from validated assets.
+   it with `lopodev world`, then assembles scenes from `assets/asset_map.json`
+   and proves navigation in Godot. World planning may start while assets
+   resolve (it needs only requirement ids); scene assembly waits for import.
 4. **Gameplay** - `gameplay` adds one mechanic at a time with assertions.
 5. **UI/mobile** - `ui` adds HUD, menus, safe areas, touch controls.
 6. **QA** - `qa-release` runs import, content, runtime, visual, build and, when

@@ -63,7 +63,7 @@ DEFAULT_BUDGET = 3000
 
 
 def build_player_mesh() -> bpy.types.Object:
-    """Build low-poly humanoid mesh."""
+    """Build the humanoid mesh."""
     skin_mat = make_material("mat_player_skin", PLAYER_COLORS["skin"],
                              roughness=MATERIAL_SETTINGS["skin"][0],
                              metallic=MATERIAL_SETTINGS["skin"][1])

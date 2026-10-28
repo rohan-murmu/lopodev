@@ -46,9 +46,9 @@ must be recorded in `ASSET_LICENSES.md` with source and attribution.
 
 ## Technical constraints
 
-- Low-poly budgets and naming from `AGENTS.md`.
+- Platform budgets (`resources/budgets.json`) and naming from `AGENTS.md`.
 - Renderer: `gl_compatibility` (verified on this host).
-- Mobile budget: <= 60,000 visible triangles, <= 80 draw calls, <= 2,048 px
+- Mobile budget: <= 300,000 visible triangles, <= 150 draw calls, <= 2,048 px
   textures, 44x44 logical-pixel touch targets. These are starting limits, not
   measured device guarantees.
 - Android export requires `textures/vram_compression/import_etc2_astc=true`.

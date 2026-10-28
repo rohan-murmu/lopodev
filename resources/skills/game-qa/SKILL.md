@@ -37,7 +37,13 @@ the command, timestamp, and evidence path. Unrun gates stay `NOT RUN`.
    tools/check_env.sh
    git status --short
    ```
-2. **Generation/asset gate** - re-run the independent GLB validator. Do not
+2. **Asset intelligence gate** - `lopodev assets validate --project
+   projects/<slug> --strict`: license eligibility and evidence, download
+   integrity, dependencies, scale, rig, animation coverage and playback,
+   collision wrappers, Godot import. **World gate** - `lopodev world validate
+   <resolved.json>` and the Godot `nav_check.gd` bake (enemies reach the
+   player, the player reaches objectives).
+   **Generation/asset gate** (Blender-made assets) - re-run the independent GLB validator. Do not
    trust the generator's own claim.
 3. **Import gate**:
    ```bash

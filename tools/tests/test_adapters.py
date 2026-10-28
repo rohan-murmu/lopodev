@@ -109,6 +109,34 @@ class AdapterTests(unittest.TestCase):
         self.assertFalse(any("PRESERVED" in item for item in removed))
         self.assertFalse(opencode.exists())
 
+    def test_specialists_handle_direct_invocation(self) -> None:
+        root = lopodev_cli.toolkit_root()
+        for path in sorted((root / "adapters/opencode/agents").glob("*.md")):
+            if path.stem == "lopodev":
+                continue
+            text = path.read_text()
+            self.assertIn("## When you are invoked directly", text, path.name)
+            self.assertIn("## Playbook", text, path.name)
+            self.assertIn(f"--owner {path.stem}", text, path.name)
+        for platform in ("kilo", "cursor"):
+            for path in (root / f"adapters/{platform}/agents").glob("*.md"):
+                if path.stem != "lopodev":
+                    self.assertIn("invoked directly", path.read_text(), f"{platform}/{path.name}")
+
+    def test_reinstall_replaces_links_to_renamed_skills(self) -> None:
+        root = lopodev_cli.toolkit_root()
+        old = self.workspace / ".opencode/skills/mobile-low-poly"  # pre-0.3 name
+        old.parent.mkdir(parents=True)
+        old.symlink_to(root / "resources/skills/mobile-low-poly", target_is_directory=True)  # pre-0.3 name
+        user_link = self.workspace / ".opencode/skills/my-skill"
+        user_link.symlink_to(self.workspace / "missing", target_is_directory=True)
+        messages = lopodev_cli.install_opencode(root, self.workspace, False)
+        self.assertTrue(any("renamed skill link" in m for m in messages))
+        self.assertFalse(old.is_symlink())
+        self.assertTrue(user_link.is_symlink(), "unrelated dangling user links are left alone")
+        self.assertEqual((self.workspace / ".opencode/skills/mobile-game").resolve(),
+                         (root / "resources/skills/mobile-game").resolve())
+
     def test_shared_contract_file_survives_uninstall_of_one_target(self) -> None:
         root = lopodev_cli.toolkit_root()
         for target, installer in (("opencode", lopodev_cli.install_opencode),
@@ -138,7 +166,7 @@ class AdapterTests(unittest.TestCase):
                                 text=True, capture_output=True, timeout=30, check=False, env=env)
         self.assertEqual(skills.returncode, 0, skills.stderr[-2000:])
         for name in ("game-planner", "lopodev-workflow", "blender-modeling", "blender-animation",
-                     "game-world", "godot-gameplay", "game-qa", "mobile-low-poly"):
+                     "game-world", "godot-gameplay", "game-qa", "mobile-game"):
             self.assertIn(name, skills.stdout)
 
     def test_uninstall_removes_unchanged_managed_files_but_keeps_user_edits(self) -> None:

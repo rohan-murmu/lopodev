@@ -59,7 +59,7 @@ DEFAULT_BUDGET = 1500
 
 
 def build_skull_mesh() -> bpy.types.Object:
-    """Build low-poly flying skull mesh."""
+    """Build the flying skull mesh."""
     bone_mat = make_material("mat_skull_bone", SKULL_COLORS["bone"],
                              roughness=MATERIAL_SETTINGS["bone"][0],
                              metallic=MATERIAL_SETTINGS["bone"][1])

@@ -29,6 +29,20 @@ Agents live in `adapters/<platform>/agents/<name>.md`; OpenCode is the reference
   knowledge search, named skills, enabled MCP tools, 3-attempt correction loop,
   knowledge capture.
 - If the lead must delegate to it, add it to the lead's `permission.task` allowlist.
+- Specialists keep the "When you are invoked directly" protocol and a
+  "Playbook" table (request -> commands -> verification). A test enforces both,
+  so `@agent` requests work without the lead.
+
+## Blender, Godot and emulator tooling
+
+- Blender code that runs inside Blender lives in `tools/blender/` and is run
+  with `-b --factory-startup` (or with a window in live mode). Derive and rig
+  features go in `lib_edit.py`/`lib_rig.py`; their hashes are part of the derive
+  cache key, so changing them re-derives assets.
+- Anything that opens a window goes through `tools/live_session.py`, so it is
+  recorded and only closed by LopoDev when the PID and start time match.
+- Tests that need Blender, Godot or an emulator `skipUnless` the tool exists;
+  emulator logic is unit-tested with a fake adb/emulator runner.
 - Check the result in a scratch workspace with `opencode debug agent <name>`.
 
 ## Adding a LopoDev skill

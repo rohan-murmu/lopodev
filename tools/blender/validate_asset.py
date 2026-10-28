@@ -2,7 +2,7 @@
 """Independently validate a binary glTF asset without Blender or third-party deps.
 
 Checks the GLB container, mesh primitives, bounds, materials, skins, animations,
-and low-poly budgets. Exits non-zero on any error.
+and triangle budgets. Exits non-zero on any error.
 """
 
 from __future__ import annotations

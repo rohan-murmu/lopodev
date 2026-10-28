@@ -1,5 +1,5 @@
 ---
-description: Create one validated low-poly prop or environment asset with editable source and preview.
+description: Create one validated prop or environment asset (discovered, edited or custom) with editable source and preview.
 agent: lopodev
 ---
 Create the prop described by `$ARGUMENTS`.

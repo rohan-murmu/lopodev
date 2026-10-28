@@ -48,7 +48,7 @@ DEFAULT_BUDGET = 200
 
 
 def build_sword() -> bpy.types.Object:
-    """Build a low-poly sword."""
+    """Build a sword."""
     blade_mat = make_material("mat_sword_blade", SWORD_COLORS["blade"],
                               roughness=MATERIAL_SETTINGS["blade"][0],
                               metallic=MATERIAL_SETTINGS["blade"][1])

@@ -8,7 +8,7 @@ First milestone: one Blender-generated prop visible and rotating in a Godot scen
 ## Purpose
 
 This is a technical vertical slice, not a game. It proves that the pipeline can
-generate a low-poly prop, export GLB, validate it independently, import it into
+generate a prop, export GLB, validate it independently, import it into
 Godot, run a scene, render it, and build a Linux executable, with evidence at
 each step.
 
@@ -16,7 +16,7 @@ each step.
 
 Must have:
 
-- Procedural low-poly wooden crate authored in Blender with origin at ground.
+- Procedural wooden crate authored in Blender with origin at ground.
 - Editable `.blend`, binary GLB, and `.meta.json` sidecar.
 - Independent GLB validation: header, meshes, materials, bounds, triangles.
 - Godot main scene with camera, directional light, ground, HUD label, and the

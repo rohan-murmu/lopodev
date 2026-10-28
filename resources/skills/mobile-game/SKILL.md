@@ -1,10 +1,10 @@
 ---
-name: mobile-low-poly
-description: Use when a Godot game targets Android or touch devices, needs mobile-safe UI, needs a low-poly mobile budget, or requires honest Android export and device validation.
+name: mobile-game
+description: Use when a Godot game targets Android or touch devices, needs mobile-safe UI, needs the mobile performance budget, or requires honest Android export and device validation.
 license: MIT
 ---
 
-# Mobile Low-Poly
+# Mobile Game
 
 Android is the verified mobile export path in this repository. iOS is not
 validated here. A desktop pass is not mobile evidence.
@@ -43,10 +43,11 @@ Start conservative and record measured numbers:
 
 | Item | Initial budget |
 |---|---:|
-| Visible triangles | 60,000 |
-| Draw calls | 80 |
+| Visible triangles | 300,000 (`max_scene_triangles`, `resources/budgets.json` mobile) |
+| Per-asset triangles | mobile profile in `resources/budgets.json` |
+| Draw calls | 150 |
 | Texture dimension | 2048 px max |
-| Materials per prop | 1 |
+| Materials per prop | 1-3 |
 | UI touch target | 44x44 logical px min |
 | Renderer | `gl_compatibility` |
 

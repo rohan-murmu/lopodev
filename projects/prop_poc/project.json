@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slug": "prop_poc",
   "title": "Prop Pipeline PoC",
-  "summary": "Prove the Blender -> GLB -> Godot vertical slice with one procedurally generated low-poly crate, a runnable scene, a rendered screenshot, and a Linux build.",
+  "summary": "Prove the Blender -> GLB -> Godot vertical slice with one procedurally generated crate, a runnable scene, a rendered screenshot, and a Linux build.",
   "status": "in_progress",
   "genre": "technical proof of concept",
   "target_platform": "linux-x86_64",
@@ -33,7 +33,7 @@
       "license": "generated-in-repo",
       "budget_triangles": 500,
       "animated": true,
-      "brief": "Low-poly blue gem on a single-bone rig with a 2-second looping spin, used to verify animation export/import."
+      "brief": "Blue gem on a single-bone rig with a 2-second looping spin, used to verify animation export/import."
     }
   ],
   "tasks": [

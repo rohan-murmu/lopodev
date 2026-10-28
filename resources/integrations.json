@@ -69,7 +69,7 @@
         "blender-simulation": "not used for game assets",
         "blender-weather-fx": "film/render oriented",
         "blender-time-of-day": "film/render oriented",
-        "blender-facial-shapekeys": "out of scope for low-poly mobile characters",
+        "blender-facial-shapekeys": "out of scope for the default mobile character budget",
         "blender-addon-development": "not a game-asset workflow",
         "blender-rendering": "LopoDev uses tools/blender/render_preview.py",
         "blender-pipeline-automation": "overlaps LopoDev's own pipeline"

@@ -88,6 +88,30 @@ custom Gradle changes; otherwise keep it generated.
 The legacy `ANDROID_KEYSTORE_RELEASE_*` environment names are accepted as
 aliases for the Godot-named variables.
 
+## Emulator test
+
+```sh
+lopodev android-test --project projects/<slug> [--tap X,Y] [--keep-running] [--headless-emulator]
+```
+
+1. Ensures the AVD `lopodev_api36` exists. A missing one is created from the
+   installed x86_64 system image; only `~/.android/avd/lopodev_api36*` is written.
+   A nested `cmdline-tools/latest/cmdline-tools` layout is handled.
+2. Starts the emulator in a window on port 5584, or reuses a running emulator,
+   and waits for `sys.boot_completed`.
+3. Exports a debug APK, then installs and launches it (the APK gate above).
+4. Requires:
+   - the process is alive after 10 s;
+   - logcat has no FATAL/ANR/SCRIPT ERROR lines for the game;
+   - the first screenshot is not blank;
+   - a tap (estimated play button, or `--tap`) changes the screen.
+5. Writes `artifacts/android/emulator_<ts>.json`, both screenshots and the
+   logcat, and records an `android emulator smoke` test at gate E.
+6. Stops the emulator if LopoDev started it.
+
+This is emulator evidence only: physical device, real touch feel and
+performance stay `NOT RUN`.
+
 ## What is verified
 
 A successful command records:

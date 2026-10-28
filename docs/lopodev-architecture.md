@@ -34,6 +34,18 @@ The conversation is disposable; files are durable. `pipeline_state.json` owns
 approval and task state. `artifacts/events.jsonl` records what happened.
 `project.json` and `GAME_SPEC.md` own the product contract.
 
+### Asset and world production
+
+Assets are discovered, not modeled by default. `modeling` runs the asset
+intelligence pipeline (`tools/asset_requirements.py` -> `asset_sources.py`
+providers -> `asset_rank.py` -> `asset_catalog.py` cache ->
+`asset_pipeline.py` import/credits/validate). `animation` resolves action ->
+clip maps and playback. `level-design` writes intent as a world plan that
+`world_plan.py` places deterministically, and `world_to_tscn.py` assembles it
+with collision and navigation. Blender scripts remain for bounded processing
+and requested custom models. Contracts, provider terms and limits:
+`docs/assets.md`.
+
 ## Agent team
 
 | Agent | Mode | Scope | Must not |

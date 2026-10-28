@@ -433,7 +433,8 @@ SKILL_OWNER = {
     "blender-animation": "animation",
     "game-world": "level-design",
     "godot-gameplay": "gameplay",
-    "mobile-low-poly": "ui",
+    "mobile-game": "ui",
+    "mobile-low-poly": "ui",  # pre-0.3 name of mobile-game
     "lopodev-workflow": "lopodev",
     "game-qa": "qa-release",
 }

@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "license_policy": {
+    "description": "Hard constraint, not a score. Unknown or ambiguous licenses go to manual review and are never auto-selected.",
+    "allowed": ["CC0-1.0"],
+    "allowed_with_attribution": ["CC-BY-3.0", "CC-BY-4.0", "OGA-BY-3.0"],
+    "review": ["CC-BY-SA-3.0", "CC-BY-SA-4.0", "GPL-2.0", "GPL-3.0", "LGPL-3.0"],
+    "rejected_patterns": ["NC", "ND", "proprietary", "editorial", "unknown"]
+  },
+  "ranking_weights": {
+    "semantic": 0.30,
+    "style": 0.15,
+    "technical": 0.10,
+    "rig": 0.15,
+    "animation": 0.15,
+    "budget": 0.10,
+    "collision": 0.05
+  },
+  "providers": {
+    "kenney": {
+      "adapter": "local_pack",
+      "homepage": "https://kenney.nl/assets",
+      "license": "CC0-1.0",
+      "license_evidence": "License.txt shipped in every pack",
+      "kinds": ["model", "material"],
+      "style": ["stylized", "flat-shaded"],
+      "automated_download": false,
+      "notes": "No public search API. Download a pack zip by hand, then `lopodev assets add-pack <zip> --provider kenney --name <pack>`; the pack's own license file is checked."
+    },
+    "quaternius": {
+      "adapter": "local_pack",
+      "homepage": "https://quaternius.com",
+      "license": "CC0-1.0",
+      "license_evidence": "License.txt shipped in each pack",
+      "kinds": ["model"],
+      "style": ["stylized", "flat-shaded"],
+      "automated_download": false,
+      "notes": "No public API. Many character packs are rigged and animated (glTF). Add downloaded packs with `lopodev assets add-pack`."
+    },
+    "kaykit": {
+      "adapter": "local_pack",
+      "homepage": "https://kaylousberg.itch.io",
+      "license": "CC0-1.0",
+      "license_evidence": "License file shipped in each pack",
+      "kinds": ["model"],
+      "style": ["stylized", "flat-shaded"],
+      "automated_download": false,
+      "notes": "No public API; itch.io downloads. Add downloaded packs with `lopodev assets add-pack`."
+    },
+    "polyhaven": {
+      "adapter": "polyhaven",
+      "api": "https://api.polyhaven.com",
+      "homepage": "https://polyhaven.com",
+      "license": "CC0-1.0",
+      "license_evidence": "https://polyhaven.com/license",
+      "terms": "https://github.com/Poly-Haven/Public-API/blob/master/ToS.md",
+      "credit": "Asset search powered by Poly Haven (polyhaven.com)",
+      "kinds": ["model", "material", "hdri"],
+      "style": ["realistic", "photoscanned"],
+      "automated_download": true,
+      "notes": "Official public API, free incl. commercial use; requests must carry an identifying User-Agent; products surfacing live API content show a 'Powered by Poly Haven' credit. Models are high-detail: check triangle budgets."
+    },
+    "ambientcg": {
+      "adapter": "ambientcg",
+      "api": "https://ambientcg.com/api/v2/full_json",
+      "homepage": "https://ambientcg.com",
+      "license": "CC0-1.0",
+      "license_evidence": "https://docs.ambientcg.com/license/",
+      "kinds": ["material", "hdri"],
+      "style": ["realistic"],
+      "automated_download": true,
+      "notes": "Official v2 JSON API; materials download as zip per resolution."
+    },
+    "polypizza": {
+      "adapter": "unavailable",
+      "homepage": "https://poly.pizza",
+      "license": "per-asset",
+      "kinds": ["model"],
+      "style": ["stylized", "flat-shaded"],
+      "automated_download": false,
+      "notes": "API requires a key (unauthenticated requests return 401) and per-asset licenses differ (CC0 and CC-BY). No adapter until its response schema is verified with a key; download individual models by hand and add them with an explicit --license."
+    },
+    "opengameart": {
+      "adapter": "unavailable",
+      "homepage": "https://opengameart.org",
+      "license": "per-asset",
+      "kinds": ["model", "material"],
+      "automated_download": false,
+      "notes": "No documented API; licenses vary per submission (including GPL and CC-BY-SA). Manual only: verify the individual license, then add with `--license <SPDX> --license-evidence <url>`."
+    }
+  }
+}

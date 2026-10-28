@@ -340,8 +340,29 @@ def save_manifest(workspace: Path, manifest: dict) -> None:
     os.replace(temporary, path)
 
 
+# Skills renamed between releases: old workspace links point at a directory
+# that no longer exists in the toolkit.
+RENAMED_SKILLS = {"mobile-low-poly": "mobile-game"}  # pre-0.3 name
+
+
+def prune_renamed_skills(root: Path, workspace: Path, dry_run: bool) -> list[str]:
+    """Remove dangling LopoDev links to renamed skills; never touch user paths."""
+    messages = []
+    for directory in (".opencode/skills", ".kilo/skills", ".agents/skills"):
+        for old in RENAMED_SKILLS:
+            link = workspace / directory / old
+            if not link.is_symlink() or link.exists():
+                continue
+            target = Path(os.readlink(link))
+            if target.name == old and target.parent.name == "skills":
+                if not dry_run:
+                    link.unlink()
+                messages.append(f"{'WOULD_REMOVE' if dry_run else 'REMOVED'} renamed skill link {link}")
+    return messages
+
+
 def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
-    messages: list[str] = []
+    messages: list[str] = prune_renamed_skills(root, workspace, dry_run)
     opencode = workspace / ".opencode"
     if opencode.is_symlink():
         raise FileExistsError(
@@ -380,6 +401,7 @@ def install_opencode(root: Path, workspace: Path, dry_run: bool) -> list[str]:
 
 
 def install_kilo(root: Path, workspace: Path, dry_run: bool) -> list[str]:
+    pruned = prune_renamed_skills(root, workspace, dry_run)
     agents = sorted((root / "adapters/kilo/agents").glob("*.md"))
     skills = skill_sources(root)
     for agent in agents:
@@ -387,8 +409,8 @@ def install_kilo(root: Path, workspace: Path, dry_run: bool) -> list[str]:
     for skill in skills:
         preflight_symlink(skill, workspace / ".kilo/skills" / skill.name, workspace)
     preflight_shared_contract(root, workspace)
-    messages = [_install_file(agent, workspace / ".kilo/agents" / agent.name, dry_run)
-                for agent in agents]
+    messages = pruned + [_install_file(agent, workspace / ".kilo/agents" / agent.name, dry_run)
+                         for agent in agents]
     messages.extend(_install_symlink(skill, workspace / ".kilo/skills" / skill.name, dry_run)
                     for skill in skills)
     messages.extend(install_shared_contract(root, workspace, dry_run))
@@ -424,13 +446,14 @@ def preflight_shared_contract(root: Path, workspace: Path, include_skills: bool 
 
 
 def install_cursor(root: Path, workspace: Path, dry_run: bool) -> list[str]:
+    pruned = prune_renamed_skills(root, workspace, dry_run)
     rule = root / "adapters/cursor/rules/lopodev.mdc"
     agents = sorted((root / "adapters/cursor/agents").glob("*.md"))
     preflight_file(rule, workspace / ".cursor/rules/lopodev.mdc", workspace)
     for agent in agents:
         preflight_file(agent, workspace / ".cursor/agents" / agent.name, workspace)
     preflight_shared_contract(root, workspace)
-    messages = [_install_file(rule, workspace / ".cursor/rules/lopodev.mdc", dry_run)]
+    messages = pruned + [_install_file(rule, workspace / ".cursor/rules/lopodev.mdc", dry_run)]
     for agent in agents:
         messages.append(_install_file(agent, workspace / ".cursor/agents" / agent.name, dry_run))
     messages.extend(install_shared_contract(root, workspace, dry_run))
@@ -623,7 +646,11 @@ def main(argv: list[str] | None = None) -> int:
     approval_parser.add_argument("--project", default=".", help="workspace root (default: current directory)")
     for name, help_text in (("knowledge", "search, verify and reuse engineering knowledge"),
                             ("context", "print a bounded task brief for an agent session"),
-                            ("world", "generate and validate procedural world plans")):
+                            ("world", "generate and validate procedural world plans"),
+                            ("assets", "discover, select, cache and import open-licensed assets"),
+                            ("brief", "game brief template, check and project scaffold"),
+                            ("live", "open Blender/Godot visibly while working and close what LopoDev opened"),
+                            ("android-test", "run the game on an Android emulator and capture evidence")):
         passthrough = sub.add_parser(name, help=help_text)
         passthrough.add_argument("passthrough_args", nargs=argparse.REMAINDER)
     uninstall = sub.add_parser("uninstall", help="remove only unchanged files recorded as LopoDev-managed")
@@ -672,7 +699,9 @@ def main(argv: list[str] | None = None) -> int:
                                 *bootstrap_args])
     if argv and argv[0] == "verify":
         return subprocess.call([str(root / "tools/verify_lopodev.sh"), *argv[1:]])
-    passthrough = {"knowledge": "knowledge.py", "context": "context_pack.py", "world": "world_plan.py"}
+    passthrough = {"knowledge": "knowledge.py", "context": "context_pack.py", "world": "world_plan.py",
+                   "assets": "asset_pipeline.py", "brief": "game_brief.py", "live": "live_session.py",
+                   "android-test": "android_test.py"}
     if argv and argv[0] in passthrough:
         return subprocess.call([sys.executable, str(root / "tools" / passthrough[argv[0]]), *argv[1:]])
     if argv and argv[0] == "mcp-run":

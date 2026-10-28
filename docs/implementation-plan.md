@@ -7,7 +7,7 @@
 ## Goal
 
 A reusable, zero-cost pipeline in which an agent can specify, generate, validate,
-integrate, run, test, and build low-poly 3D games with Blender, Godot, and
+integrate, run, test, and build 3D games with Blender, Godot, and
 OpenCode. This first deliverable establishes the audit, skills, agent contract,
 reusable tools, and one complete vertical slice. It does not attempt a full game.
 
@@ -65,7 +65,7 @@ projects/<game_slug>/
   scenes `PascalCase.tscn`, scripts `snake_case.gd`.
 - Units: 1 Blender unit = 1 Godot meter. Generated props are authored with
   origin at ground contact and +Z up in Blender; glTF export uses +Y up.
-- Low-poly budget: props 50-2,000 triangles; characters 500-6,000; one material
+- Original budget (superseded by `resources/budgets.json`): props 50-2,000 triangles; characters 500-6,000; one material
   per asset unless a documented reason exists.
 
 ## Milestones and acceptance criteria
@@ -80,7 +80,7 @@ projects/<game_slug>/
 ### M1 - Skills and agent contract
 
 - [ ] Skills exist at `resources/skills/{game-planner,blender-modeling,
-      blender-animation,game-world,godot-gameplay,mobile-low-poly,
+      blender-animation,game-world,godot-gameplay,mobile-game,
       lopodev-workflow,game-qa}/SKILL.md`.
 - [ ] Each has valid YAML frontmatter (`name` equals folder, non-empty
       description), required inputs, outputs, numbered workflow, validation
@@ -115,7 +115,7 @@ projects/<game_slug>/
 
 ### M4 - End-to-end PoC
 
-- [ ] Generate one low-poly crate in Blender; save `.blend`; export GLB.
+- [ ] Generate one crate in Blender; save `.blend`; export GLB.
 - [ ] Validate the GLB independently: valid header, >0 meshes, >0 triangles,
       materials, finite bounds within budget.
 - [ ] Import GLB into a Godot 4.6 project and instance it in `main.tscn` with
@@ -147,7 +147,7 @@ owns under `projects/prop_poc/`. It does not delete user-authored files.
 | Blender 5.x API drift | Introspect operators with `api_report.py`; fail loudly, never assume success. |
 | Headless checks pass but visuals are wrong | Mandatory graphical screenshot plus human/agent inspection. |
 | Export template mismatch | Engine and templates pinned to the same 4.6.1 stable build. |
-| Disk/GPU constraints | Low-poly budgets, compatibility renderer, small scenes. |
+| Disk/GPU constraints | Platform budgets, compatibility renderer, small scenes. |
 | Unbounded inference cost | Small milestones, deterministic scripts, no model calls inside tools. |
 | Corrupting user work | Git checkpoints, no destructive deletes, generated files confined to owned paths. |
 

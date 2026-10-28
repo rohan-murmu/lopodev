@@ -1,4 +1,4 @@
-"""Generate a rigged low-poly pickup with a looping action and export it to GLB.
+"""Generate a rigged pickup with a looping action and export it to GLB.
 
 Usage (inside Blender):
   blender -b --factory-startup --python tools/blender/make_animated_prop.py -- \
@@ -37,7 +37,7 @@ FRAME_END = 48
 def parse_args() -> argparse.Namespace:
     argv = sys.argv
     argv = argv[argv.index("--") + 1:] if "--" in argv else []
-    parser = argparse.ArgumentParser(description="Generate an animated low-poly prop")
+    parser = argparse.ArgumentParser(description="Generate an animated prop")
     parser.add_argument("--kind", default="gem", choices=["gem"])
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--name", default="sm_gem")

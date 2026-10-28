@@ -1,4 +1,4 @@
-"""Generate a deterministic low-poly prop, save .blend, and export GLB.
+"""Generate a deterministic prop, save .blend, and export GLB.
 
 Usage (inside Blender):
   blender -b --factory-startup --python tools/blender/make_prop.py -- \
@@ -193,7 +193,7 @@ BUILDERS = {
 def parse_args() -> argparse.Namespace:
     argv = sys.argv
     argv = argv[argv.index("--") + 1:] if "--" in argv else []
-    parser = argparse.ArgumentParser(description="Generate a low-poly prop")
+    parser = argparse.ArgumentParser(description="Generate a prop")
     parser.add_argument("--kind", required=True, choices=sorted(BUILDERS))
     parser.add_argument("--out-dir", required=True,
                         help="project root, e.g. projects/prop_poc")

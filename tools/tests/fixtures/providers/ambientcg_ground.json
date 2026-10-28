@@ -1,0 +1,8 @@
+{"numberOfResults": 1, "foundAssets": [
+  {"assetId": "Ground054", "displayName": "Ground 054", "displayCategory": "Ground",
+   "tags": ["ground", "dirt", "forest", "leaves"],
+   "previewImage": {"256-PNG": "https://acg-media.example/Ground054_256.png"},
+   "downloadFolders": {"default": {"downloadFiletypeCategories": {"zip": {"downloads": [
+     {"downloadLink": "https://ambientcg.example/get?file=Ground054_1K-JPG.zip", "fileName": "Ground054_1K-JPG.zip",
+      "attribute": "1K-JPG", "size": null}]}}}}}
+]}

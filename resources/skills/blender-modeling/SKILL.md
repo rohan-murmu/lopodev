@@ -1,12 +1,28 @@
 ---
 name: blender-modeling
-description: Use when a validated game spec requires low-poly 3D props or environment assets that must be generated in Blender, saved as editable .blend files, exported to GLB, and validated before Godot import.
+description: Use for bounded Blender asset processing (format conversion, pivot/origin fixes, cleanup, decimation, UV or material repair) requested by asset-intelligence, or for custom models the user explicitly asks for or that discovery could not supply. Saves editable .blend files, exports GLB, validates before Godot import.
 license: MIT
 ---
 
 # Blender Modeling
 
-Generate deterministic, low-poly assets with Blender Python. Every asset leaves
+**Three modes, any art style:**
+
+- **derive:** change an existing asset (`lopodev assets derive`, script with
+  `edit(ctx)`, any bpy);
+- **processing:** convert, fix pivots, decimate, repair UVs/materials (also a
+  derive);
+- **custom:** model from scratch when the user asks or nothing suitable
+  exists (`"source": "custom"`).
+
+**Role:** optional processing, not the default way to get assets. First run
+`asset-intelligence` (`lopodev assets run`). Use this skill when a manifest
+entry needs conversion or repair (input: the cached original path from
+`assets/asset_manifest.json`; output: a new GLB under `godot/assets/models/`,
+never an edit of the original), or when the user asked for a custom model or
+discovery and procedural fallbacks failed.
+
+Generate or modify deterministic assets with Blender Python, in the project's art style within the platform budget. Every asset leaves
 this skill as an editable source plus a game-ready GLB and a machine-readable
 report. No asset is considered done until an independent validator passes.
 
@@ -51,7 +67,7 @@ report. No asset is considered done until an independent validator passes.
    ```
    Supported starter kinds: `crate`, `barrel`, `rock`, `pillar`. Extend the
    generator in a new helper function rather than cloning the whole script.
-4. Use flat-shaded, low-poly geometry. Keep one material unless the brief
+4. Match the project's `art_style` and stay within the platform budget. Keep one material unless the brief
    requires more. Do not use paid add-ons or downloaded textures.
 5. Confirm origin at ground contact (`min Z == 0` after generation), real-world
    scale, and applied rotation/scale.
@@ -91,7 +107,7 @@ A valid mesh is not an acceptable model. Work in passes and look at every pass:
    load `concept-target-visual-gate` and keep a short mismatch ledger; never lower
    the target to declare success.
 
-For low-poly technique load `blender-lpm-skill` (export through LopoDev's GLB
+For a faceted/flat-shaded look (when `art_style` asks for it) load `blender-lpm-skill` (export through LopoDev's GLB
 pipeline, not its FBX path). For modular kits keep a shared grid (1 m or 2 m),
 pivots at ground contact, and consistent trim heights so pieces snap.
 Live inspection through Blender MCP (`look`, `viewport_capture`) is welcome; the

@@ -67,12 +67,22 @@ python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"
 |---|---|
 | Install the LopoDev CLI | `bin/lopodev install-cli` |
 | Install LopoDev into a workspace | `bin/lopodev install opencode --project <workspace>` |
-| Create a project workspace | `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>"` |
+| Create a project workspace | `python3 tools/bootstrap_project.py --workspace . --slug <slug> --title "<title>" [--brief GAME_BRIEF.md]` |
+| Game Brief (structured first prompt) | `lopodev brief template\|check <brief>\|scaffold <brief> --project projects/<slug>` |
 | Adopt an existing Godot project | `python3 tools/adopt_project.py --godot-dir <dir> --project projects/<slug> --slug <slug> --title "<title>"` |
 | Install pinned MCP servers + skills (per user) | `lopodev setup` |
 | Diagnose install, skills, MCP activation | `lopodev doctor --project <workspace> [--probe]` |
 | Task brief (bounded context) | `lopodev context --project projects/<slug> [--task <id>]` |
 | Reusable knowledge | `lopodev knowledge search\|show\|apply\|add\|verify\|promote\|fail` |
+| Asset sources / add a downloaded pack | `lopodev assets providers` / `lopodev assets add-pack <zip> --provider kenney --name <pack>` |
+| Resolve, cache, import assets + credits | `lopodev assets run --project projects/<slug> [--offline]` |
+| Asset validation report | `lopodev assets validate --project projects/<slug> [--strict]` |
+| Change an existing asset (any Blender edit) | `lopodev assets derive --project P --from <id> --id <new> --script <edit.py> [--live]` |
+| Rig/animate an existing asset | `lopodev assets rig --project P --from <id> --id <new> --mode transfer\|humanoid\|parts\|creature` |
+| Asset image library | `lopodev assets previews --project P` -> `artifacts/assets/index.md` |
+| Visible tools (live mode) | `lopodev live mode\|start blender\|start godot\|run godot\|status\|stop` |
+| Android emulator test | `lopodev android-test --project P` |
+| Godot navigation check | `godot --headless --path <dir> --script res://.pipeline/nav_check.gd -- res://scenes/World.tscn` |
 | World plan generate/validate | `lopodev world generate\|validate <plan.json>` |
 | World plan -> Godot scene | `python3 tools/godot/world_to_tscn.py <resolved.json> --godot-dir <dir> --out scenes/World.tscn` |
 | Tool approval mode | `lopodev approval [auto\|manual]` |
@@ -139,28 +149,32 @@ reusable procedures; they are not agents.
 |---|---|---|
 | `lopodev` | Plan, route, verify, gate decisions | `lopodev-workflow` |
 | `game-design` | Spec, tasks, acceptance, scope | `game-planner` |
-| `modeling` | Props/environment meshes, GLB, previews | `blender-modeling` |
-| `animation` | Rig, actions, animated GLB | `blender-animation` |
-| `level-design` | Scenes, lighting, collision, spawns | `game-world` |
+| `modeling` | Asset discovery, licensing, cache, Godot import; Blender processing | `asset-intelligence` |
+| `animation` | Action -> clip mapping, skeleton checks, playback; rig/retarget fallback | `asset-intelligence`, `blender-animation` |
+| `level-design` | Procedural worlds, scenes, collision, navigation | `game-world` |
 | `gameplay` | Player/camera/mechanics/tests | `godot-gameplay` |
-| `ui` | HUD, menus, touch, safe areas | `mobile-low-poly` |
-| `optimization` | Measured performance fixes | `mobile-low-poly` |
+| `ui` | HUD, menus, touch, safe areas | `mobile-game` |
+| `optimization` | Measured performance fixes | `mobile-game` |
 | `qa-release` | Independent gates and report | `game-qa` |
 
 Run skills in this order, skipping only with a recorded reason:
 
 1. **game-planner** - request -> `GAME_SPEC.md`, `project.json`, ordered tasks,
    asset list, measurable acceptance criteria. All later skills consume these.
-2. **blender-modeling** - spec asset list -> editable `.blend`, `.glb`,
-   `.meta.json`. Must pass `validate_asset.py`.
-3. **blender-animation** - animation requirements -> rigged `.blend`, animated
-   `.glb`, animation channel report. Must pass
-   `validate_asset.py --require-animation`.
-4. **game-world** - validated assets + level brief -> Godot scenes, imported
-   GLB instances, lighting/camera, collision, spawn points.
+2. **asset-intelligence** - asset requirements -> openly licensed assets
+   selected, cached and imported with collision wrappers, animation maps,
+   credits (`lopodev assets run`). Must pass `lopodev assets validate`.
+   Assets are reused and adapted by default, not modeled from scratch.
+3. **blender-modeling / blender-animation** - only for `"source": "procedural"`
+   assets, explicit custom-model requests, or bounded processing/retarget tasks
+   the asset stage requests. Must pass `validate_asset.py`
+   (`--require-animation` for clips).
+4. **game-world** - level brief -> procedural world plan (`lopodev world`),
+   then Godot scenes from `assets/asset_map.json` with ground/terrain collision,
+   lighting, navigation, spawns; navigation proven by `nav_check.gd`.
 5. **godot-gameplay** - spec mechanics + scene node map -> small GDScript
    systems, input actions, signals, animation wiring, gameplay tests.
-6. **ui / mobile-low-poly** - HUD, menus, safe areas, touch actions, Android
+6. **ui / mobile-game** - HUD, menus, safe areas, touch actions, Android
    export prerequisites and honest mobile limitations.
 7. **game-qa** - project + acceptance criteria -> import/content/runtime/
    graphical/export evidence, test report, known limitations.
@@ -284,9 +298,10 @@ projects/<game_slug>/
 - Godot nodes: `PascalCase`, descriptive (`Prop_Crate`, `Player`, `Spawn_01`).
 - 1 Blender unit = 1 Godot meter. Author props with origin at ground contact.
   Blender +Z up; glTF/Godot +Y up after export.
-- Low-poly budgets: props 50-2,000 triangles; characters 500-6,000; 4,096 px
-  max texture dimension (2,048 px for mobile), one material per asset unless
-  documented otherwise.
+- Budgets come from the platform profile in `resources/budgets.json` (mobile:
+  props ~5k triangles, characters ~15k, 2,048 px textures; desktop: ~50k/~60k,
+  4,096 px) unless the spec sets its own. Any art style is allowed; prefer few
+  materials per asset on mobile.
 - Generated GLBs live only in `godot/assets/models/`; editable sources stay in
   `blender/`. Never edit a GLB by hand.
 - Adopted projects may keep their Godot directory outside the project context;
@@ -298,8 +313,10 @@ Within each approved approval gate, every milestone must be independently
 verifiable. These technical gates are cumulative:
 
 1. **Generation gate** - command exits 0 and expected files exist, non-empty.
-2. **Asset gate** - `validate_asset.py` passes header, mesh, material, bounds,
-   triangle budget, and animation checks where required.
+2. **Asset gate** - `lopodev assets validate` passes license, integrity,
+   dependencies, scale, rig, animation coverage/playback and collision for
+   discovered assets; `validate_asset.py` passes header, mesh, material,
+   bounds, triangle budget, and animation checks for Blender-made assets.
 3. **Import gate** - `godot --headless --path <godot_dir> --import` exits 0 and
    the log contains no `ERROR:`/`SCRIPT ERROR:` caused by the project.
 4. **Content gate** - `validate_project.gd` instantiates the main scene and finds

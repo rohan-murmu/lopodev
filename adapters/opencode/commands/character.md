@@ -1,5 +1,5 @@
 ---
-description: Build a validated animated low-poly character from spec through Gate C evidence.
+description: Build a validated animated character (discovered, edited or custom) from spec through Gate C evidence.
 agent: lopodev
 ---
 Build the character described by `$ARGUMENTS` for the active project.
