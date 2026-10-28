@@ -64,6 +64,23 @@ class BootstrapProjectTests(unittest.TestCase):
             self.assertEqual(data["current_gate"], "A")
             self.assertEqual(data["gates"]["A"]["status"], "pending")
 
+    @unittest.skipUnless(any((TOOLKIT / ".tools/godot").glob("Godot_v*")), "pinned Godot not installed")
+    def test_fresh_project_passes_runtime_smoke_without_target(self) -> None:
+        # Regression: smoke defaulted TARGET_NODE to the PoC's Prop_Crate, so
+        # every new game failed with "target node not found: Prop_Crate".
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "ws"
+            subprocess.run([sys.executable, str(SCRIPT), "--workspace", str(workspace),
+                            "--slug", "smoke_game", "--title", "Smoke Game"],
+                           capture_output=True, text=True, check=True)
+            env = {key: value for key, value in __import__("os").environ.items()
+                   if key not in ("TARGET_NODE", "EXPECT_ROTATION", "EXPECT_MOVEMENT")}
+            result = subprocess.run([str(TOOLKIT / "tools/godot/smoke.sh"),
+                                     str(workspace / "projects/smoke_game/godot")],
+                                    capture_output=True, text=True, timeout=300, env=env, check=False)
+            self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr[-2000:])
+            self.assertIn("RUNTIME_SMOKE=PASS", result.stdout)
+
     def test_refuses_to_overwrite_existing_project(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             workspace = Path(temp)

@@ -9,6 +9,7 @@ var initial_rotation := Quaternion.IDENTITY
 var initial_position := Vector3.ZERO
 var initial_captured := false
 var frames_processed := 0
+var target_free_run := false
 var frame_limit := 30
 var finished := false
 
@@ -46,7 +47,9 @@ func _initialize() -> void:
 	frame_limit = int(_env("FRAMES", "30"))
 	var scene_path := _env("SCENE_PATH",
 		str(ProjectSettings.get_setting("application/run/main_scene", "")))
-	var target_name := _env("TARGET_NODE", "Prop_Crate")
+	# No default target: a new game has no PoC crate. Without TARGET_NODE the
+	# gate checks that the scene runs; movement/rotation checks need a target.
+	var target_name := _env("TARGET_NODE")
 
 	if scene_path == "":
 		_fail("no scene configured")
@@ -68,6 +71,18 @@ func _initialize() -> void:
 	var found := instance.find_child(target_name, true, false) if target_name != "" else null
 	if found == null and target_name == "":
 		found = _find_first_mesh(instance)
+	if found == null and target_name == "" and instance is Node3D:
+		found = instance
+	if found == null and target_name == "":
+		if _env("EXPECT_ROTATION", "0") == "1" or _env("EXPECT_MOVEMENT", "0") == "1":
+			_fail("EXPECT_ROTATION/EXPECT_MOVEMENT need TARGET_NODE")
+			instance.free()
+			_finish()
+			return
+		# A 2D/UI-only scene: only verify that frames run without errors.
+		target_free_run = true
+		process_frame.connect(_on_process_frame)
+		return
 	if found == null:
 		_fail("target node not found: %s" % target_name)
 		instance.print_tree_pretty()
@@ -88,6 +103,10 @@ func _on_process_frame() -> void:
 	if finished:
 		return
 	frames_processed += 1
+	if target_free_run:
+		if frames_processed >= frame_limit:
+			_finish()
+		return
 	if not initial_captured:
 		if target == null or not is_instance_valid(target) or not target.is_inside_tree():
 			_fail("target is not inside the tree on the first processed frame")

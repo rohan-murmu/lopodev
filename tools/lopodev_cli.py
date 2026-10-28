@@ -36,9 +36,26 @@ def project_root(value: str | None) -> Path:
 
 def read_version(root: Path) -> str:
     try:
-        return (root / "VERSION").read_text(encoding="utf-8").strip()
+        version = (root / "VERSION").read_text(encoding="utf-8").strip()
     except OSError:
-        return "unknown"
+        version = "unknown"
+    build = build_label(root)
+    return f"{version} ({build})" if build else version
+
+
+def build_label(root: Path) -> str:
+    """Which build is running: the Homebrew formula version, else the checkout commit."""
+    configured = os.environ.get("LOPODEV_BUILD", "").strip()
+    if configured:
+        return configured
+    if not (root / ".git").exists():
+        return ""
+    try:
+        result = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+                                capture_output=True, text=True, timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return f"git-{result.stdout.strip()}" if result.returncode == 0 and result.stdout.strip() else ""
 
 
 def safe_destination(workspace: Path, destination: Path) -> Path:

@@ -21,6 +21,8 @@ class LopoDevCliTests(unittest.TestCase):
     def test_version_reports_toolkit_root(self) -> None:
         result = self.run_cli("version")
         self.assertEqual(result.returncode, 0, result.stderr)
+        # A checkout reports its commit so builds are distinguishable.
+        self.assertRegex(result.stdout, r"lopodev [0-9.]+[^\n]* \(git-[0-9a-f]+\)")
         self.assertIn(f"lopodev {(ROOT / 'VERSION').read_text().strip()}", result.stdout)
         self.assertIn(f"root={ROOT}", result.stdout)
 
@@ -64,6 +66,13 @@ class LopoDevCliTests(unittest.TestCase):
                                     capture_output=True, check=False, cwd=temp, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(f"root={ROOT.resolve()}", result.stdout)
+
+    def test_homebrew_build_label_is_reported(self) -> None:
+        env = dict(os.environ, LOPODEV_BUILD="HEAD-1a2b3c4")
+        result = subprocess.run([str(CLI), "--version"], text=True, capture_output=True,
+                                check=False, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.strip().endswith("(HEAD-1a2b3c4)"), result.stdout)
 
     def test_configured_home_is_not_resolved_through_symlinks(self) -> None:
         # Homebrew sets LOPODEV_HOME to its stable opt/ symlink; resolving it

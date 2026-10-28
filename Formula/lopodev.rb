@@ -18,6 +18,7 @@ class Lopodev < Formula
       #!/bin/bash
       export LOPODEV_HOME="#{opt_libexec}"
       export LOPODEV_LAUNCHER="#{opt_bin}/lopodev"
+      export LOPODEV_BUILD="#{version}"
       exec "#{formula_opt_bin("python@3.13")}/python3.13" "#{opt_libexec}/tools/lopodev_cli.py" "$@"
     SH
   end
